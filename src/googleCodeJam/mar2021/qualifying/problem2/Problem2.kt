@@ -17,8 +17,8 @@ enum class ArtElement { C, J, X;
     }
 }
 
-//val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
-val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem2\\customInput.txt"))
+val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
+//val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem2\\testInput.txt"))
 
 fun main() {
     val totalCases = Integer.parseInt(input.nextLine())
@@ -135,8 +135,11 @@ fun calculateArtCost(art: List<ArtElement>, cjCost: Int, jcCost: Int): Int {
  */
 fun fillUnknownsAtStart(art: MutableList<ArtElement>, cjCost: Int, jcCost: Int): MutableList<ArtElement> {
     var numberOfPlacesToFill = art.indexOfFirst { it != ArtElement.X }
-    if (numberOfPlacesToFill == 0) {
+    if (numberOfPlacesToFill == -1) {
         return fillListOfUnknowns(art.size, cjCost, jcCost)
+    }
+    if (numberOfPlacesToFill == 0) {
+        return art
     }
     var firstKnownItem = art[numberOfPlacesToFill]
     val costSignIdentical = (cjCost <= 0 && jcCost <= 0) || (cjCost >= 0 && jcCost >= 0)
@@ -155,9 +158,11 @@ fun fillUnknownsAtStart(art: MutableList<ArtElement>, cjCost: Int, jcCost: Int):
             alternate = false
             if (firstKnownItem == ArtElement.J && cjIsNegativeCost) {
                 art[--numberOfPlacesToFill] = ArtElement.C
+                return art
             }
             if (firstKnownItem == ArtElement.C && !cjIsNegativeCost) {
                 art[--numberOfPlacesToFill] = ArtElement.J
+                return art
             }
         }
     }
@@ -183,6 +188,9 @@ fun fillUnknownsAtStart(art: MutableList<ArtElement>, cjCost: Int, jcCost: Int):
         }
     }
 
+    if (numberOfPlacesToFill <= 0) {
+        return art
+    }
     val finalArt = replaceSublist(art, generateElements(firstKnownItem, numberOfPlacesToFill, alternate).asReversed(), 0)
     if (forceNegativeEnding) {
         if (art[0] == ArtElement.C && cjIsNegativeCost) {
