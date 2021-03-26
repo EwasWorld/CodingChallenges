@@ -16,8 +16,8 @@ reverse 1-3
 1243
 */
 
-val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
-//val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem1\\testInput.txt"))
+//val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
+val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem1\\customInput.txt"))
 
 fun main() {
     val totalCases = Integer.parseInt(input.nextLine())
