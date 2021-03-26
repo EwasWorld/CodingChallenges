@@ -1,6 +1,7 @@
 package googleCodeJam.mar2021.qualifying.problem2
 
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.lang.IllegalArgumentException
 import java.util.*
@@ -16,7 +17,8 @@ enum class ArtElement { C, J, X;
     }
 }
 
-val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
+//val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
+val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem2\\customInput.txt"))
 
 fun main() {
     val totalCases = Integer.parseInt(input.nextLine())
@@ -25,7 +27,7 @@ fun main() {
         val cjCost = Integer.parseInt(line[0])
         val jcCost = Integer.parseInt(line[1])
         var art = mutableListOf<ArtElement>()
-        for (element in line[3]) {
+        for (element in line[2]) {
             try {
                 art.add(ArtElement.valueOf(element.toUpperCase().toString()))
             }
@@ -37,10 +39,10 @@ fun main() {
         /*
          * Fill start and end unknowns
          */
-        if (art[0] != ArtElement.X) {
+        if (art[0] == ArtElement.X) {
             art = fillUnknownsAtStart(art, cjCost, jcCost)
         }
-        if (art.last() != ArtElement.X) {
+        if (art.last() == ArtElement.X) {
             // Pretend the end is the start :P
             art = fillUnknownsAtStart(art.asReversed(), jcCost, cjCost).asReversed()
         }
@@ -56,9 +58,10 @@ fun main() {
                 continue
             }
             // Check if end of unknown sequence
-            if (firstUnknownIndex != null) {
+            if (art[i] != ArtElement.X && firstUnknownIndex != null) {
+                val lastUnknownIndex = i - 1
                 var startElement = art[firstUnknownIndex - 1]
-                val endElement = art[i + 1]
+                val endElement = art[lastUnknownIndex + 1]
 
                 // Convert to a sequence that starts and ends on the same element by filling the first unknown
                 //      (there's no way to avoid making at least one pair of this type anyway)
@@ -67,11 +70,9 @@ fun main() {
                     startElement = endElement
                     firstUnknownIndex++
                 }
-                if (firstUnknownIndex <= i) {
-                    val filling = generateElements(startElement, i - firstUnknownIndex + 1, cjCost + jcCost < 0).asReversed()
-                    // Replace the slice of unknowns in the artwork with the new filling
-                    art.filterIndexed { index, _ -> index <= i && index >= firstUnknownIndex ?: index + 1 }
-                    art.addAll(firstUnknownIndex, filling)
+                if (firstUnknownIndex <= lastUnknownIndex) {
+                    val filling = generateElements(startElement, lastUnknownIndex - firstUnknownIndex + 1, cjCost + jcCost < 0).asReversed()
+                    art = replaceSublist(art, filling, firstUnknownIndex)
                 }
                 firstUnknownIndex = null
             }
@@ -79,6 +80,13 @@ fun main() {
 
         println("Case #$caseNumber: " + calculateArtCost(art, cjCost, jcCost))
     }
+}
+
+fun replaceSublist(art: MutableList<ArtElement>, filling: MutableList<ArtElement>, startIndex: Int): MutableList<ArtElement> {
+    val finalArt = art.filterIndexed {
+            index, _ -> !(index >= startIndex && index < startIndex + filling.size) }.toMutableList()
+    finalArt.addAll(startIndex, filling)
+    return finalArt
 }
 
 /**
@@ -126,11 +134,11 @@ fun calculateArtCost(art: List<ArtElement>, cjCost: Int, jcCost: Int): Int {
  * If [art] starts with N ArtElement.X elements, it will optimise the first N elements and return an ammended art piece
  */
 fun fillUnknownsAtStart(art: MutableList<ArtElement>, cjCost: Int, jcCost: Int): MutableList<ArtElement> {
-    var numberOfPlacesToFill = art.indexOfFirst { it != ArtElement.X } - 1
-    if (numberOfPlacesToFill == -1) {
+    var numberOfPlacesToFill = art.indexOfFirst { it != ArtElement.X }
+    if (numberOfPlacesToFill == 0) {
         return fillListOfUnknowns(art.size, cjCost, jcCost)
     }
-    val firstKnownItem = art[numberOfPlacesToFill + 1]
+    var firstKnownItem = art[numberOfPlacesToFill]
     val costSignIdentical = (cjCost <= 0 && jcCost <= 0) || (cjCost >= 0 && jcCost >= 0)
     val cjIsNegativeCost = cjCost < 0
 
@@ -162,17 +170,27 @@ fun fillUnknownsAtStart(art: MutableList<ArtElement>, cjCost: Int, jcCost: Int):
     }
     else {
         alternate = false
+        var newItem: ArtElement? = null
         if (firstKnownItem == ArtElement.J && cjIsNegativeCost) {
-            art[--numberOfPlacesToFill] = ArtElement.C
+            newItem = ArtElement.C
         }
-        if (firstKnownItem == ArtElement.C && !cjIsNegativeCost) {
-            art[--numberOfPlacesToFill] = ArtElement.J
+        else if (firstKnownItem == ArtElement.C && !cjIsNegativeCost) {
+            newItem = ArtElement.J
+        }
+        if (newItem != null) {
+            art[--numberOfPlacesToFill] = newItem
+            firstKnownItem = newItem
         }
     }
 
-    val finalArt = generateElements(firstKnownItem, numberOfPlacesToFill, alternate).plus(art.subList(numberOfPlacesToFill + 1, art.size - 1)).toMutableList()
-    if (forceNegativeEnding && art[0] == ArtElement.C && !cjIsNegativeCost) {
-        finalArt[0] = ArtElement.J
+    val finalArt = replaceSublist(art, generateElements(firstKnownItem, numberOfPlacesToFill, alternate).asReversed(), 0)
+    if (forceNegativeEnding) {
+        if (art[0] == ArtElement.C && cjIsNegativeCost) {
+            finalArt[0] = ArtElement.J
+        }
+        if (art[0] == ArtElement.J && !cjIsNegativeCost) {
+            finalArt[0] = ArtElement.C
+        }
     }
     return finalArt
 }
