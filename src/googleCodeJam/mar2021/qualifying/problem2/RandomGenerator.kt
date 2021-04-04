@@ -8,16 +8,16 @@ fun main() {
     val generatedArtCount = 50
     output.writeText((generatedArtCount * 8).toString() + "\n")
     for (x in 0 until generatedArtCount) {
-        val art = mutableListOf<ArtElement>()
+        val art = mutableListOf<ArtPieceElement>()
         val startWithAnX = Random.nextBoolean()
         for (i in 0 until Random.nextInt(6, 12)) {
             val count = Random.nextInt(6) + 1
             if (i % 2 == 0 == startWithAnX) {
-                art.addAll(MutableList(count) { ArtElement.X })
+                art.addAll(MutableList(count) { ArtPieceElement.UNKNOWN })
             }
             else {
                 for (j in 0 until count) {
-                    art.add(if (Random.nextBoolean()) ArtElement.C else ArtElement.J)
+                    art.add(if (Random.nextBoolean()) ArtPieceElement.C else ArtPieceElement.J)
                 }
             }
         }

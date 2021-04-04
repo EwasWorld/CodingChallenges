@@ -11,7 +11,7 @@ import java.util.*
 val input = Scanner(File("${DIR_PATH}/testInput.txt"))
 
 fun main() {
-    val totalCases = Integer.parseInt(googleCodeJam.mar2021.qualifying.problem2.input.nextLine())
+    val totalCases = Integer.parseInt(input.nextLine())
     for (caseNumber in 1..totalCases) {
     
         println("Case #${DS}caseNumber: ")

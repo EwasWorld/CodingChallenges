@@ -5,56 +5,34 @@ import java.io.File
 import java.io.InputStreamReader
 import java.util.*
 
-
-/*
-Musings:
-
-4213
-4[213]
-position 3
-reverse 1-3
-1243
-*/
-
 //val input = Scanner(BufferedReader(InputStreamReader(System.`in`)))
-val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem1\\customInput.txt"))
+val input = Scanner(File("src\\googleCodeJam\\mar2021\\qualifying\\problem1\\testInput.txt"))
 
 fun main() {
     val totalCases = Integer.parseInt(input.nextLine())
     for (caseNumber in 1..totalCases) {
         val listSize = Integer.parseInt(input.nextLine())
         var list = input.nextLine().split(" ").map { Integer.parseInt(it) }
-        check(list.size == listSize) { "UnexpectedSize" }
+        check(list.isNotEmpty()) { "Empty list" }
+        check(list.size == listSize) { "Unexpected size" }
 
         var cost = 0
         // Skip the last iteration, list will be sorted
         for (i in 0 until list.size - 1) {
-            /*
-             * Locate minimum between i and end of list inclusive
-             */
-            var minPos = i
-            var minVal = list[i]
-            for (j in (i + 1) until list.size) {
-                if (list[j] < minVal) {
-                    minPos = j
-                    minVal = list[j]
-                }
-            }
+            // Locate minimum between i and end of list inclusive
+            // Can use index of as all items in list are distinct
+            val minPos = list.indexOf(list.subList(i, list.size).min()!!)
 
-            /*
-             * Reverse the sublist from i to minPos inclusive
-             */
+            // Reverse the sublist from i to minPos inclusive (no need to reverse a list of length 1)
             if (minPos != i) {
                 list = list.subList(0, i)
                         .plus(list.subList(i, minPos + 1).reversed())
                         .plus(list.subList(minPos + 1, list.size))
             }
 
-            /*
-             * Calculate cost
-             */
-            // Cost is size of list that was reversed
-            cost += minPos - i + 1 // +1 because inclusive, and yes, they count reversing a singleton as cost 1...
+            //Calculate cost (size of list that was reversed)
+            // +1 because inclusive, and yes, they count reversing a singleton as cost 1...
+            cost += minPos - i + 1
         }
         println("Case #$caseNumber: $cost")
     }
