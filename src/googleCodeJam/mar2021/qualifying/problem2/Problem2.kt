@@ -10,7 +10,9 @@ import java.util.*
 /**
  * The elements that can create an art piece
  */
-enum class ArtPieceElement { C, J, UNKNOWN;
+enum class ArtPieceElement {
+    C, J, UNKNOWN;
+
     fun getOpposite(): ArtPieceElement {
         return when (this) {
             C -> J
@@ -34,11 +36,22 @@ fun main() {
         /*
          * Parse input
          */
-        val inputLine = input.nextLine().split(" ")
-        val cjCost = Integer.parseInt(inputLine[0])
-        val jcCost = Integer.parseInt(inputLine[1])
+        // Allow for some breaking lines in the input for readability of my test files
+        var line: String
+        while (true) {
+            line = input.nextLine()
+            if (line.startsWith("---")) {
+                println("---------")
+                continue
+            }
+            break
+        }
+
+        val splitLine = line.split(" ")
+        val cjCost = Integer.parseInt(splitLine[0])
+        val jcCost = Integer.parseInt(splitLine[1])
         var artPiece = mutableListOf<ArtPieceElement>()
-        for (element in inputLine[2]) {
+        for (element in splitLine[2]) {
             try {
                 artPiece.add(ArtPieceElement.valueOf(element.toUpperCase().toString()))
             }
@@ -78,13 +91,14 @@ fun main() {
             }
             if (firstUnknownIndex <= lastUnknownIndex) {
                 artPiece = replaceSublist(
-                    artPiece,
-                    generateElements(
-                        elementBeforeUnknowns,
-                        lastUnknownIndex - firstUnknownIndex + 1,
-                        cjCost + jcCost < 0
-                    ).asReversed(),
-                    firstUnknownIndex)
+                        artPiece,
+                        generateElements(
+                                elementBeforeUnknowns,
+                                lastUnknownIndex - firstUnknownIndex + 1,
+                                cjCost + jcCost < 0
+                        ).asReversed(),
+                        firstUnknownIndex
+                )
             }
         }
 
@@ -120,12 +134,18 @@ fun fillListOfUnknowns(size: Int, cjCost: Int, jcCost: Int): MutableList<ArtPiec
     // At least one negative but cost of alternating would result in a loss: just do a single negative-cost pair
     if (cjCost + jcCost > 0 && size > 2) {
         val startElement = if (cjCost < 0) ArtPieceElement.C else ArtPieceElement.J
-        val art = generateElements(startElement.getOpposite(), size, false)
-        art[0] = startElement
-        return art
+        val artPiece = generateElements(startElement.getOpposite(), size, false)
+        artPiece[0] = startElement
+        return artPiece
     }
     // Alternate starting on the negative(est)-cost pair to ensure it maximises that combination
-    return generateElements(if (cjCost < jcCost) ArtPieceElement.C else ArtPieceElement.J, size, true)
+    val startingElement = if (cjCost < jcCost) ArtPieceElement.C else ArtPieceElement.J
+    val artPiece = generateElements(startingElement.getOpposite(), size, true)
+    // Ensure that the final pair is not positive (no need to check start as we guarantee to start on a negative pair)
+    if (artPiece[artPiece.size - 1] == startingElement && (cjCost > 0 || jcCost > 0)) {
+        artPiece[artPiece.size - 1] = startingElement.getOpposite()
+    }
+    return artPiece
 }
 
 /**
@@ -157,7 +177,9 @@ fun calculateArtCost(artPiece: List<ArtPieceElement>, cjCost: Int, jcCost: Int):
  * If [artPiece] starts with N ArtElement.X elements, it will optimise the first N elements and return an amended art piece
  * @return [artPiece] after replacing all [ArtPieceElement.UNKNOWN]s until the first non-unknown item
  */
-fun fillUnknownsAtStart(artPiece: MutableList<ArtPieceElement>, cjCost: Int, jcCost: Int): MutableList<ArtPieceElement> {
+fun fillUnknownsAtStart(
+    artPiece: MutableList<ArtPieceElement>, cjCost: Int, jcCost: Int
+): MutableList<ArtPieceElement> {
     var unknownsToFill = artPiece.indexOfFirst { it != ArtPieceElement.UNKNOWN }
     if (unknownsToFill == -1) {
         return fillListOfUnknowns(artPiece.size, cjCost, jcCost)
@@ -194,8 +216,9 @@ fun fillUnknownsAtStart(artPiece: MutableList<ArtPieceElement>, cjCost: Int, jcC
     while (identicalUntil < unknownsToFill
             && finalArt[identicalUntil] != finalArt[identicalUntil + 1]
             && ((finalArt[identicalUntil] == ArtPieceElement.C && cjCost >= 0)
-                    || (finalArt[identicalUntil] == ArtPieceElement.J && jcCost >= 0))) {
-            identicalUntil++
+                    || (finalArt[identicalUntil] == ArtPieceElement.J && jcCost >= 0))
+    ) {
+        identicalUntil++
     }
     return replaceSublist(finalArt, generateElements(finalArt[identicalUntil], identicalUntil, false), 0)
 }
