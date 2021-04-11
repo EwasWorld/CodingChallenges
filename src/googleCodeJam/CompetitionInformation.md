@@ -1,0 +1,23 @@
+- Code Jam Archive: find all past problems and scoreboards [here](https://codingcompetitions.withgoogle.com/codejam/archive)
+- My contestant name: EwasWorld (there's a search button at the bottom of each round's scoreboard)
+
+# Competition structure
+- 5 Rounds
+    - Qualification round: 5 problems, 30 hours, earn 30 points to qualify for the next round
+    - Round 1: 3 problems, 2.5 hours, split into sub-rounds 1A, 1B, and 1C
+        - Score in the top 1500 of any sub-round to progress to the next round
+        - Entrants can participate in all or just one of these sub-rounds until they progress to the next round
+    - Round 2: 4 problems, 2.5 hours, score in the top 1000 to progress to the next round
+    - Round 3: 4 problems, 2.5 hours, score in the top 25 to progress to the next round
+    - Final Round: 5 problems, 4 hours, an in-person round
+- Each round has a series of problems which participants must create programs to solve
+    - Programs can be written in almost any language (see full list and versions on [here](https://codingcompetitions.withgoogle.com/codejam/faq))
+    - Ranking is done first by how many points a participant has earnt, then by the time taken (including any time penalties for failed attempts)
+- Each problem has a series of 'test sets', each of which earn points. The more test sets the submitted program passes, the more points received for that problem
+    - Test sets can be either
+        - Visible verdict: showing whether the program has passed or failed as soon as the program is submitted
+        - Hidden verdict: showing whether the program has passed or failed after the round has ended
+    - For example in 2021's qualification round, the second problem is about minimising the cost of a string.
+        - For 5 points, test set 1 has only positive costs and a string length of up to 10 (visible verdict)
+        - For 11 points, test set 2 has only positive costs and a string length of up to 100 (visible verdict)
+        - For 1 point, test set 3 has positive and negative costs and a string length of up to 1000 (hidden verdict)
