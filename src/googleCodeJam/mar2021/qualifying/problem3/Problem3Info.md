@@ -1,5 +1,5 @@
-# 2021 - Qualifying Round - Problem 1 - Reversort
-## Important info:
+# 2021 - Qualifying Round - Problem 3 - Reversort Engineering 
+## Important Info
 ```
 Reversort(L):
   for i := 1 to length(L) - 1
@@ -13,10 +13,8 @@ Example of Reversort([4,2,1,3]):
 2. i=2, j=2 -> [1,2,4,3]
 3. i=3, j=4 -> [1,2,3,4]
 
-- Input: list size on one line followed by the list (items are separated by a space). All items in list are distinct
-- Output: total cost of sorting the list
+- Input: list size, N, and a target cost, C
+- Output: a list, L, of space-separated integers of size N where the cost of Reversort(L) is C
 
 
 ## Musings
-Example list: 4213
-1 is smallest so reverse: [421]3 (becomes 1243)

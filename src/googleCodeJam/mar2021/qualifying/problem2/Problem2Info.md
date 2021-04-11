@@ -1,16 +1,16 @@
-2021 Problem 2 - Moons and Umbrellas 
-
-# Important Info
+# 2021 - Qualifying Round - Problem 2 - Moons and Umbrellas 
+## Important Info
 - An art piece consists of a list of Js and Cs
 - Every CJ has cost X and every JC has cost Y
   - Extension: costs can be negative (profitable)
 - Some letters in the piece have not yet been decided, complete them with minimal cost
 
-Input: X Y <art piece - a string of Js, Cs, and ?s>
-Output: a minimal-cost string of Js and Cs (replace all ?s with a letter)
+
+- Input: X Y <art piece - a string of Js, Cs, and ?s>
+- Output: a minimal-cost string of Js and Cs (replace all ?s with a letter)
 
 
-# Musings
+## Musings
 - For ?s at the start of the piece
     - If both costs are positive
         - Duplicate the last item

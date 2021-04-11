@@ -1,4 +1,4 @@
-# 2021 - Round 1A - Problem 1 
+# 2021 - Round 1A - Problem 1 - Append Sort
 ## Important Info
 Given a list of numbers, convert it into a strictly ascending list by appending digits to the end of each item using the minimum number of appends (no reordering)
 
