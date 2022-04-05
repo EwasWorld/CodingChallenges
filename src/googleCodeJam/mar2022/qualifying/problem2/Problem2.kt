@@ -44,6 +44,9 @@ fun main() {
 fun printCase(caseNumber: Int, successString: String?) =
     println("Case #$caseNumber: " + (successString.takeIf { !it.isNullOrBlank() } ?: "IMPOSSIBLE"))
 
+/**
+ * Custom min function because apparently Google doesn't understand that Kotlin has a built in function for this
+ */
 fun min(list: List<Int>): Int {
     var min = Int.MAX_VALUE
     list.forEach {
