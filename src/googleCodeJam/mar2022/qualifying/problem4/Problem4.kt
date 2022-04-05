@@ -5,9 +5,17 @@ import java.util.*
 
 fun main() {
 //    val input = Scanner(System.`in`)
-    val folder = "src\\googleCodeJam\\mar2022\\qualifying\\problem4\\sample_test_set_1\\"
-    val fileNamePrefix = "sample_ts1"
 //    val input = Scanner(File("src\\googleCodeJam\\mar2022\\qualifying\\problem4\\testInput.txt"))
+    val folder: String
+    val fileNamePrefix: String
+    if (true) {
+        folder = "src\\googleCodeJam\\mar2022\\qualifying\\problem4\\test_set_1\\"
+        fileNamePrefix = "ts1"
+    }
+    else {
+        folder = "src\\googleCodeJam\\mar2022\\qualifying\\problem4\\sample_test_set_1\\"
+        fileNamePrefix = "sample_ts1"
+    }
     val input = Scanner(File("$folder${fileNamePrefix}_input.txt"))
     val expectedOutput = Scanner(File("$folder${fileNamePrefix}_output.txt"))
     val testCases = input.nextLine().toInt()
@@ -43,50 +51,60 @@ fun main() {
 
         var finalFunSum = 0L
         while (remainingRuns.isNotEmpty()) {
-            val funFactorToUse = modules.first { !it.isUsed }.funFactor
-            val modulesToUse = modules.filter { it.funFactor == funFactorToUse }
-            var consideredRuns = modulesToUse
-                    .asSequence()
-                    .map { it.runs }
-                    .flatten()
-                    .distinctBy { it.id }
-                    .filter { !it.isComplete }
-                    .map { it to it.findNextHighest(funFactorToUse) }
-                    .sortedBy { it.second.first() }
-                    .toList()
+            check(remainingRuns.none { it.sortedUnused.isEmpty() }) { "Empty run" }
 
-            var index = 0
-            var runToTrigger: Run
-            while (true) {
-                consideredRuns = consideredRuns.filter {
-                    it.second[index] == consideredRuns[0].second[index]
+            // Trigger any runs that only have one unused module in them
+            val runsWithSingleUnusedModule = remainingRuns.filter { it.sortedUnused.size == 1 }
+            if (runsWithSingleUnusedModule.isNotEmpty()) {
+                runsWithSingleUnusedModule.forEach {
+                    finalFunSum += it.useRun()
+                    remainingRuns.remove(it)
                 }
-                if (consideredRuns.size == 1) {
-                    runToTrigger= consideredRuns.first().first
-                    break
-                }
-                val maxLenRun = consideredRuns.find { it.second.size == index + 1 }
-                if (maxLenRun != null) {
-                    runToTrigger= maxLenRun.first
-                    break
-                }
-
-                consideredRuns = consideredRuns.sortedBy { it.second[index + 1] }
-                index++
+                continue
             }
 
-            finalFunSum += runToTrigger.useRun()
-            remainingRuns.removeIf { it.id == runToTrigger.id }
+            var runToSortedUnusedFun = remainingRuns.map { run -> RunToFun(run, run.sortedUnused.map { it.funFactor }) }
+
+            val maxFunFactor = runToSortedUnusedFun.map { it.funFactors.first() }.max()!!
+            runToSortedUnusedFun = runToSortedUnusedFun.filter { it.funFactors.first() == maxFunFactor }
+
+            var runToTrigger: Run
+            var idx = 1
+            while (true) {
+                val minFunFactor = runToSortedUnusedFun.map { it.funFactors[idx] }.min()!!
+                runToSortedUnusedFun = runToSortedUnusedFun.filter { it.funFactors[idx] == minFunFactor }
+
+                if (runToSortedUnusedFun.size == 1) {
+                    runToTrigger = runToSortedUnusedFun.first().run
+                    break
+                }
+                val maxLenRun = runToSortedUnusedFun.find { it.funFactors.size == idx + 1 }
+                if (maxLenRun != null) {
+                    runToTrigger = maxLenRun.run
+                    break
+                }
+
+                idx++
+            }
+            runToTrigger.let {
+                finalFunSum += it.useRun()
+                remainingRuns.remove(it)
+            }
+            continue
         }
 
         val output = "Case #$testCaseIndex: $finalFunSum"
-        println(output)
         val expectedLine = expectedOutput.nextLine()
         check(output == expectedLine) { "Failed: Wrong answer" }
-//        check(output == expectedLine) { "Expected: $expectedLine\nActual: $output" }
+        println(output)
     }
     println("All passed")
 }
+
+data class RunToFun(
+    val run: Run,
+    val funFactors: List<Int>
+)
 
 data class Module(
     val funFactor: Int,
@@ -97,6 +115,10 @@ data class Module(
 ) {
     val isStartModule: Boolean
         get() = previousModules.isEmpty()
+
+    override fun toString(): String {
+        return funFactor.toString()
+    }
 }
 
 data class Run(
@@ -104,24 +126,14 @@ data class Run(
     val modules: MutableList<Module> = mutableListOf(),
     var isComplete: Boolean = false
 ) {
-    private var sorted: List<Module>? = null
+    lateinit var sortedUnused: MutableList<Module>
 
     fun finalise() {
-        check(sorted == null) { "Already finalised" }
-        sorted = modules.sortedByDescending { it.funFactor }
+        sortedUnused = modules.sortedByDescending { it.funFactor }.toMutableList()
     }
 
     override fun toString(): String {
         return id.toString() + ": " + modules.joinToString(" ") { it.funFactor.toString() }
-    }
-
-    fun findNextHighest(funFactor: Int): List<Int> {
-        return sorted!!
-                .filter { !it.isUsed && it.funFactor <= funFactor }
-                .takeIf { it.size > 1 }
-                ?.drop(1)
-                ?.map { it.funFactor }
-                ?: listOf(-1)
     }
 
     fun useRun(): Int {
@@ -132,7 +144,12 @@ data class Run(
         }!!.funFactor
         check(funFactorToUse != -1)
 
-        modules.first { !it.isUsed && it.funFactor == funFactorToUse }.isUsed = true
+        val moduleToUse = modules.first { !it.isUsed && it.funFactor == funFactorToUse }
+        moduleToUse.runs.forEach {
+            it.sortedUnused.remove(moduleToUse)
+        }
+
+        moduleToUse.isUsed = true
         isComplete = true
 
         return funFactorToUse
