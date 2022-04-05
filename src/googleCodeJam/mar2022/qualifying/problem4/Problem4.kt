@@ -9,8 +9,9 @@ fun main() {
     val folder: String
     val fileNamePrefix: String
     if (true) {
-        folder = "src\\googleCodeJam\\mar2022\\qualifying\\problem4\\test_set_1\\"
-        fileNamePrefix = "ts1"
+        val testSet = "3"
+        folder = "src\\googleCodeJam\\mar2022\\qualifying\\problem4\\test_set_$testSet\\"
+        fileNamePrefix = "ts$testSet"
     }
     else {
         folder = "src\\googleCodeJam\\mar2022\\qualifying\\problem4\\sample_test_set_1\\"
@@ -51,10 +52,10 @@ fun main() {
 
         var finalFunSum = 0L
         while (remainingRuns.isNotEmpty()) {
-            check(remainingRuns.none { it.sortedUnused.isEmpty() }) { "Empty run" }
+            check(remainingRuns.none { it.sortedTriggerModules.isEmpty() }) { "Empty run" }
 
             // Trigger any runs that only have one unused module in them
-            val runsWithSingleUnusedModule = remainingRuns.filter { it.sortedUnused.size == 1 }
+            val runsWithSingleUnusedModule = remainingRuns.filter { it.sortedTriggerModules.size == 1 }
             if (runsWithSingleUnusedModule.isNotEmpty()) {
                 runsWithSingleUnusedModule.forEach {
                     finalFunSum += it.useRun()
@@ -63,22 +64,36 @@ fun main() {
                 continue
             }
 
-            var runToSortedUnusedFun = remainingRuns.map { run -> RunToFun(run, run.sortedUnused.map { it.funFactor }) }
-
-            val maxFunFactor = runToSortedUnusedFun.map { it.funFactors.first() }.max()!!
-            runToSortedUnusedFun = runToSortedUnusedFun.filter { it.funFactors.first() == maxFunFactor }
+            val nextFunFactorToTrigger = remainingRuns.map { it.sortedTriggerModules.first().funFactor }.min()!!
+            // Find the module with the desired fun factor that is closest to the end of a chain
+            // (allows all duplicates to be triggered to, rather than the first run potentially triggering all of them)
+            val nextModuleToTrigger = modules
+                    .filter { !it.isUsed && it.funFactor == nextFunFactorToTrigger }
+                    .map {
+                        var distanceToEnd = 0
+                        var currentModule = it
+                        while (currentModule.nextModule != null && !currentModule.nextModule!!.isUsed) {
+                            currentModule = currentModule.nextModule!!
+                            distanceToEnd++
+                        }
+                        it to distanceToEnd
+                    }
+                    .minBy { it.second }!!
+                    .first
+            var consideredRuns = remainingRuns.filter { it.sortedTriggerModules.contains(nextModuleToTrigger) }
+                    .map { run -> RunToFun(run, run.sortedTriggerModules.map { it.funFactor }) }
 
             var runToTrigger: Run
             var idx = 1
             while (true) {
-                val minFunFactor = runToSortedUnusedFun.map { it.funFactors[idx] }.min()!!
-                runToSortedUnusedFun = runToSortedUnusedFun.filter { it.funFactors[idx] == minFunFactor }
+                val minFunFactor = consideredRuns.map { it.funFactors[idx] }.min()!!
+                consideredRuns = consideredRuns.filter { it.funFactors[idx] == minFunFactor }
 
-                if (runToSortedUnusedFun.size == 1) {
-                    runToTrigger = runToSortedUnusedFun.first().run
+                if (consideredRuns.size == 1) {
+                    runToTrigger = consideredRuns.first().run
                     break
                 }
-                val maxLenRun = runToSortedUnusedFun.find { it.funFactors.size == idx + 1 }
+                val maxLenRun = consideredRuns.find { it.funFactors.size == idx + 1 }
                 if (maxLenRun != null) {
                     runToTrigger = maxLenRun.run
                     break
@@ -116,8 +131,14 @@ data class Module(
     val isStartModule: Boolean
         get() = previousModules.isEmpty()
 
+    var numberOfModulesAfterThisOne: Int? = null
+
     override fun toString(): String {
         return funFactor.toString()
+    }
+
+    fun updateModulesToEnd() {
+
     }
 }
 
@@ -126,31 +147,43 @@ data class Run(
     val modules: MutableList<Module> = mutableListOf(),
     var isComplete: Boolean = false
 ) {
-    lateinit var sortedUnused: MutableList<Module>
+    lateinit var sortedTriggerModules: MutableList<Module>
 
     fun finalise() {
-        sortedUnused = modules.sortedByDescending { it.funFactor }.toMutableList()
+        sortedTriggerModules = modules.sortedByDescending { it.funFactor }.toMutableList()
+    }
+
+    fun updateSortedUnused() {
+        sortedTriggerModules = getModulesThatWillTrigger().sortedByDescending { it.funFactor }.toMutableList()
     }
 
     override fun toString(): String {
         return id.toString() + ": " + modules.joinToString(" ") { it.funFactor.toString() }
     }
 
+    fun getModulesThatWillTrigger() = modules.takeWhile { !it.isUsed }
+
+    /**
+     * Sets [isComplete] to true, [Module.isUsed] as appropriate on the modules that will be triggered
+     */
     fun useRun(): Int {
         check(!isComplete) { "Run completed twice" }
 
-        val funFactorToUse = modules.maxBy {
-            if (it.isUsed) -1 else it.funFactor
-        }!!.funFactor
+        val triggeredModules = getModulesThatWillTrigger()
+        val funFactorToUse = triggeredModules.map { it.funFactor }.max()!!
         check(funFactorToUse != -1)
 
-        val moduleToUse = modules.first { !it.isUsed && it.funFactor == funFactorToUse }
-        moduleToUse.runs.forEach {
-            it.sortedUnused.remove(moduleToUse)
+        val affectedRuns = mutableListOf<Run>()
+        triggeredModules.forEach {
+            it.isUsed = true
+            affectedRuns.addAll(it.runs)
+        }
+        affectedRuns.distinctBy { it.id }.forEach {
+            it.updateSortedUnused()
         }
 
-        moduleToUse.isUsed = true
         isComplete = true
+        sortedTriggerModules = mutableListOf()
 
         return funFactorToUse
     }
