@@ -1,6 +1,6 @@
 package googleCodeJam.mar2022.qualifying.problem4
 
-import googleCodeJam.mar2022.qualifying.TimeAccumulator
+import googleCodeJam.mar2022.qualifying.TimeChecker
 import java.io.File
 import java.util.*
 
@@ -21,16 +21,16 @@ fun main() {
     val input = Scanner(File("$folder${fileNamePrefix}_input.txt"))
     val expectedOutput = Scanner(File("$folder${fileNamePrefix}_output.txt"))
 
+    val timeChecker = TimeChecker()
     execute(input, expectedOutput)
+    timeChecker.logTime(printNow = true)
 
     println("All passed")
 }
 
 fun execute(input: Scanner, expectedOutput: Scanner?) {
-    val timeChecker = TimeAccumulator()
     val testCases = input.nextLine().toInt()
     for (testCaseIndex in 1..testCases) {
-//        if (testCaseIndex > 20) break
         val expectedLine = expectedOutput?.nextLine()
         val totalModules = input.nextLine().toInt()
         val modules = input.nextLine().split(" ")
@@ -47,37 +47,21 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
                 }
         modules.sortByDescending { it.funFactor }
 
-//        if (testCaseIndex != 26) {
-//            println("Skipped $testCaseIndex")
-//            continue
-//        }
-
-        timeChecker.logTime(0)
-
         var finalFunSum = 0L
         val remainingChains = modules.mapIndexedNotNull { moduleIndex, module ->
             if (!module.isStartModule) return@mapIndexedNotNull null
-
             val chain = ChainReaction(moduleIndex)
-
             val chainModules = mutableListOf<Module>()
             module.forEachTriggerableInChain {
                 chainModules.add(it)
                 it.untriggeredChains.add(chain)
             }
-
-            chain.takeIf {
-                val triggerResult = it.setModulesAndFinalise(chainModules)
-                        ?: return@takeIf true
-                finalFunSum += triggerResult.sum
-                false
-            }
+            chain.takeIf { it.setModulesAndFinalise(chainModules)?.let { result -> finalFunSum += result } == null }
         }.groupBy { it.sortedTriggerableModules.first().funFactor }
 
         val remainingChainsKeys = remainingChains.keys.toList().sorted().toMutableList()
         val groupedModules = modules.groupBy { it.funFactor }
 
-        timeChecker.logTime(1)
         while (remainingChainsKeys.isNotEmpty()) {
             // Find the max funFactor of the chain whose highest funFactor is minimal
             val lowestChains = remainingChains.getValue(remainingChainsKeys.first()).filterNot { it.hasBeenTriggered }
@@ -108,7 +92,6 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
             var consideredChains = nextModuleToTrigger.untriggeredChains
                     .map { chain -> ChainToFunList(chain, chain.sortedTriggerableModules.map { it.funFactor }) }
 
-            timeChecker.logTime(2)
             var chainReactionToTrigger: ChainReaction
             var checkIndex = 0
             while (true) {
@@ -133,17 +116,14 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
             }
 
             chainReactionToTrigger.let {
-                val triggerResult = it.trigger()
-                finalFunSum += triggerResult.sum
+                finalFunSum += it.trigger()
             }
-            timeChecker.logTime(3)
         }
 
         val output = "Case #$testCaseIndex: $finalFunSum"
         check(expectedLine == null || output == expectedLine) { "Failed: Wrong answer" }
         println(output)
     }
-    timeChecker.printFinal()
 }
 
 data class ChainToFunList(
@@ -211,7 +191,7 @@ data class ChainReaction(
     /**
      * @return the result of [ChainReaction.trigger] if the chain was auto-triggered due to having only 1 module
      */
-    fun setModulesAndFinalise(value: List<Module>): TriggerResult? {
+    fun setModulesAndFinalise(value: List<Module>): Long? {
         check(value.isNotEmpty()) { "Empty list" }
         modules = value
         if (value.size == 1) {
@@ -250,7 +230,7 @@ data class ChainReaction(
     /**
      * Sets [hasBeenTriggered] to true, [Module.hasBeenTriggered] as appropriate on the modules that will be triggered
      */
-    fun trigger(): TriggerResult {
+    fun trigger(): Long {
         check(!hasBeenTriggered) { "Chain completed twice" }
 
         val triggeredModules = getModulesThatWillTrigger()
@@ -259,7 +239,6 @@ data class ChainReaction(
 
         val affectedChains = mutableSetOf<ChainReaction>()
         val chainsToTrigger = mutableSetOf<ChainReaction>()
-        val triggeredChains = mutableSetOf(this)
         triggeredModules.forEach {
             it.hasBeenTriggered = true
             affectedChains.addAll(it.untriggeredChains)
@@ -272,22 +251,15 @@ data class ChainReaction(
             }
         }
         chainsToTrigger.forEach { chain ->
-            val result = chain.trigger()
-            funFactorToUse += result.sum
-            triggeredChains.addAll(result.chainsTriggered)
+            funFactorToUse += chain.trigger()
         }
 
         hasBeenTriggered = true
         sortedTriggerableModules = mutableListOf()
 
-        return TriggerResult(funFactorToUse, setOf())
+        return funFactorToUse
     }
 }
-
-data class TriggerResult(
-    val sum: Long,
-    val chainsTriggered: Set<ChainReaction>
-)
 
 /**
  * Custom min function because apparently Google doesn't understand that Kotlin has a built in function for this

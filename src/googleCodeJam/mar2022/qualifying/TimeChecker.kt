@@ -6,7 +6,7 @@ class TimeChecker {
 
     private val logs = mutableListOf<Pair<String, Long>>()
 
-    fun logTime(id: String, printNow: Boolean = false) {
+    fun logTime(id: String = "", printNow: Boolean = false) {
         val currentTime = System.currentTimeMillis()
         val totalTimeTaken = currentTime - startTime
         val lapTimeTaken = currentTime - lastTime
