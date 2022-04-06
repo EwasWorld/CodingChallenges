@@ -72,19 +72,24 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
                 finalFunSum += triggerResult.sum
                 false
             }
-        }.toMutableList()
+        }.groupBy { it.sortedTriggerableModules.first().funFactor }
 
+        val remainingChainsKeys = remainingChains.keys.toList().sorted().toMutableList()
         val groupedModules = modules.groupBy { it.funFactor }
 
         timeChecker.logTime(1)
-        while (remainingChains.isNotEmpty()) {
-            remainingChains.sortBy { it.sortedTriggerableModules.first().funFactor }
-
+        while (remainingChainsKeys.isNotEmpty()) {
             // Find the max funFactor of the chain whose highest funFactor is minimal
-            val nextFunFactorToTrigger = remainingChains.first().sortedTriggerableModules.first().funFactor
+            val lowestChains = remainingChains.getValue(remainingChainsKeys.first()).filterNot { it.hasBeenTriggered }
+            if (lowestChains.isEmpty()) {
+                remainingChainsKeys.removeAt(0)
+                continue
+            }
+            val nextFunFactorToTrigger = lowestChains.map { it.sortedTriggerableModules.first().funFactor }.getMin()
+
             // Find the module with the desired fun factor that is closest to the end of a chain
             // (allows all duplicates to be triggered to, rather than the first chain potentially triggering them all)
-            val nextModuleToTrigger = groupedModules[nextFunFactorToTrigger]!!
+            val nextModuleToTrigger = groupedModules.getValue(nextFunFactorToTrigger)
                     .filterNot { it.hasBeenTriggered }
                     .let {
                         if (it.size == 1) return@let it.first()
@@ -130,7 +135,6 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
             chainReactionToTrigger.let {
                 val triggerResult = it.trigger()
                 finalFunSum += triggerResult.sum
-                remainingChains.removeAll(triggerResult.chainsTriggered)
             }
             timeChecker.logTime(3)
         }
@@ -220,7 +224,7 @@ data class ChainReaction(
     /**
      * Whether this chain has been triggered
      */
-    private var hasBeenTriggered: Boolean = false
+    var hasBeenTriggered: Boolean = false
 
     /**
      * This chain is about to be triggered.
@@ -276,7 +280,7 @@ data class ChainReaction(
         hasBeenTriggered = true
         sortedTriggerableModules = mutableListOf()
 
-        return TriggerResult(funFactorToUse, triggeredChains)
+        return TriggerResult(funFactorToUse, setOf())
     }
 }
 
