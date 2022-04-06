@@ -1,6 +1,6 @@
 package googleCodeJam.mar2022.qualifying.problem4
 
-import googleCodeJam.mar2022.qualifying.TimeChecker
+import googleCodeJam.mar2022.qualifying.TimeAccumulator
 import java.io.File
 import java.util.*
 
@@ -27,16 +27,16 @@ fun main() {
 }
 
 fun execute(input: Scanner, expectedOutput: Scanner?) {
-    val timeChecker = TimeChecker()
+    val timeChecker = TimeAccumulator()
     val testCases = input.nextLine().toInt()
     for (testCaseIndex in 1..testCases) {
-        if (testCaseIndex > 20) break
+//        if (testCaseIndex > 20) break
         val expectedLine = expectedOutput?.nextLine()
         val totalModules = input.nextLine().toInt()
         val modules = input.nextLine().split(" ")
+                .takeIf { it.size == totalModules }!!
                 .map { Module(it.toLong()) }
                 .toMutableList()
-        check(modules.size == totalModules) { "Bad input" }
 
         input.nextLine().split(" ")
                 .takeIf { it.size == totalModules }!!
@@ -51,6 +51,8 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
 //            println("Skipped $testCaseIndex")
 //            continue
 //        }
+
+        timeChecker.logTime(0)
 
         var finalFunSum = 0L
         val remainingChains = modules.mapIndexedNotNull { moduleIndex, module ->
@@ -72,6 +74,9 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
             }
         }.toMutableList()
 
+        val groupedModules = modules.groupBy { it.funFactor }
+
+        timeChecker.logTime(1)
         while (remainingChains.isNotEmpty()) {
             remainingChains.sortBy { it.sortedTriggerableModules.first().funFactor }
 
@@ -79,9 +84,7 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
             val nextFunFactorToTrigger = remainingChains.first().sortedTriggerableModules.first().funFactor
             // Find the module with the desired fun factor that is closest to the end of a chain
             // (allows all duplicates to be triggered to, rather than the first chain potentially triggering them all)
-            val nextModuleToTrigger = modules
-                    .subList(modules.indexOfFirst { it.funFactor == nextFunFactorToTrigger }, modules.size)
-                    .takeWhile { it.funFactor == nextFunFactorToTrigger }
+            val nextModuleToTrigger = groupedModules[nextFunFactorToTrigger]!!
                     .filterNot { it.hasBeenTriggered }
                     .let {
                         if (it.size == 1) return@let it.first()
@@ -100,6 +103,7 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
             var consideredChains = nextModuleToTrigger.untriggeredChains
                     .map { chain -> ChainToFunList(chain, chain.sortedTriggerableModules.map { it.funFactor }) }
 
+            timeChecker.logTime(2)
             var chainReactionToTrigger: ChainReaction
             var checkIndex = 0
             while (true) {
@@ -128,13 +132,12 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
                 finalFunSum += triggerResult.sum
                 remainingChains.removeAll(triggerResult.chainsTriggered)
             }
+            timeChecker.logTime(3)
         }
 
         val output = "Case #$testCaseIndex: $finalFunSum"
         check(expectedLine == null || output == expectedLine) { "Failed: Wrong answer" }
         println(output)
-
-        timeChecker.logTime("$testCaseIndex")
     }
     timeChecker.printFinal()
 }
