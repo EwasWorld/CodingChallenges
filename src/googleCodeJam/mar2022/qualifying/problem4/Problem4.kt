@@ -1,5 +1,6 @@
 package googleCodeJam.mar2022.qualifying.problem4
 
+import googleCodeJam.mar2022.qualifying.TimeChecker
 import java.io.File
 import java.util.*
 
@@ -26,8 +27,10 @@ fun main() {
 }
 
 fun execute(input: Scanner, expectedOutput: Scanner?) {
+    val timeChecker = TimeChecker()
     val testCases = input.nextLine().toInt()
     for (testCaseIndex in 1..testCases) {
+        if (testCaseIndex > 20) break
         val totalModules = input.nextLine().toInt()
         val modules = input.nextLine().split(" ")
                 .map { Module(it.toInt()) }
@@ -60,72 +63,78 @@ fun execute(input: Scanner, expectedOutput: Scanner?) {
 
         var finalFunSum = 0L
         while (remainingChains.isNotEmpty()) {
-            check(remainingChains.none { it.sortedTriggerableModules.isEmpty() }) { "Empty chain" }
-
             // Trigger any chains that only have one unused module in them
-            val chainsWithSingleUnusedModule = remainingChains.filter { it.sortedTriggerableModules.size == 1 }
+            val chainsWithSingleUnusedModule = remainingChains.filter { it.sortedTriggerableModules.size <= 1 }
                     .takeIf { it.isNotEmpty() }
             if (chainsWithSingleUnusedModule != null) {
                 chainsWithSingleUnusedModule.forEach {
+                    check(it.sortedTriggerableModules.isNotEmpty()) { "Empty chain" }
                     finalFunSum += it.trigger()
                     remainingChains.remove(it)
                 }
                 continue
             }
 
+            remainingChains.sortBy { it.sortedTriggerableModules.first().funFactor }
+
             // Find the max funFactor of the chain whose highest funFactor is minimal
-            val nextFunFactorToTrigger = remainingChains.map { it.sortedTriggerableModules.first().funFactor }.getMin()
+            val nextFunFactorToTrigger = remainingChains.first().sortedTriggerableModules.first().funFactor
             // Find the module with the desired fun factor that is closest to the end of a chain
             // (allows all duplicates to be triggered to, rather than the first chain potentially triggering them all)
-            val nextModuleToTrigger = modules
-                    .filter { !it.hasBeenTriggered && it.funFactor == nextFunFactorToTrigger }
+            var lowest: Pair<Module, Int>? = null
+            modules.subList(modules.indexOfFirst { it.funFactor == nextFunFactorToTrigger }, modules.size)
+                    .takeWhile { it.funFactor == nextFunFactorToTrigger }
+                    .filterNot { it.hasBeenTriggered }
                     .map {
-                        var distanceToEnd = 0
-                        it.forEachTriggerableInChain { distanceToEnd++ }
-                        it to distanceToEnd
+                        val modulesInChain = it.untriggeredChains.first().modules
+                        val distanceToEnd = modulesInChain.size - modulesInChain.indexOf(it)
+                        if (lowest == null || lowest!!.second > distanceToEnd) {
+                            lowest = it to distanceToEnd
+                        }
                     }
-                    .getMinBy { it.second }
-                    .first
+            val nextModuleToTrigger = lowest!!.first
             // Find all chains for which the highest fun factor is the module we want to trigger
             //     and prepare them for analysis
-            var consideredChains = remainingChains.filter { it.sortedTriggerableModules.contains(nextModuleToTrigger) }
+            var consideredChains = nextModuleToTrigger.untriggeredChains
                     .map { chain -> ChainToFunList(chain, chain.sortedTriggerableModules.map { it.funFactor }) }
 
             var chainReactionToTrigger: ChainReaction
-            var idx = 1
+            var checkIndex = 0
             while (true) {
-                // Find the minimum next-highest funFactor
-                val minFunFactor = consideredChains.map { it.funFactors[idx] }.getMin()
-                // Find all chains with the minimal next-highest funFactor
-                consideredChains = consideredChains.filter { it.funFactors[idx] == minFunFactor }
-
                 if (consideredChains.size == 1) {
                     chainReactionToTrigger = consideredChains.first().chainReaction
                     break
                 }
                 // If any chains have no more modules, trigger one of these at random
                 // (all are identical in their descending list of funFactors)
-                val maxLenChain = consideredChains.find { it.funFactors.size == idx + 1 }
+                val maxLenChain = consideredChains.find { it.funFactors.size == checkIndex + 1 }
                 if (maxLenChain != null) {
                     chainReactionToTrigger = maxLenChain.chainReaction
                     break
                 }
 
-                idx++
+                checkIndex++
+
+                // Find the minimum next-highest funFactor
+                val minFunFactor = consideredChains.map { it.funFactors[checkIndex] }.getMin()
+                // Find all chains with the minimal next-highest funFactor
+                consideredChains = consideredChains.filter { it.funFactors[checkIndex] == minFunFactor }
             }
 
             chainReactionToTrigger.let {
                 finalFunSum += it.trigger()
                 remainingChains.remove(it)
             }
-            continue
         }
 
         val output = "Case #$testCaseIndex: $finalFunSum"
         val expectedLine = expectedOutput?.nextLine()
         check(expectedLine == null || output == expectedLine) { "Failed: Wrong answer" }
         println(output)
+
+        timeChecker.logTime("$testCaseIndex")
     }
+    timeChecker.printFinal()
 }
 
 data class ChainToFunList(
@@ -222,12 +231,12 @@ data class ChainReaction(
         val funFactorToUse = triggeredModules.map { it.funFactor }.getMax()
         check(funFactorToUse != -1)
 
-        val affectedChains = mutableListOf<ChainReaction>()
+        val affectedChains = mutableSetOf<ChainReaction>()
         triggeredModules.forEach {
             it.hasBeenTriggered = true
             affectedChains.addAll(it.untriggeredChains)
         }
-        affectedChains.distinctBy { it.id }.forEach { chain ->
+        affectedChains.minus(this).forEach { chain ->
             chain.sortedTriggerableModules = chain.getModulesThatWillTrigger().sortedByDescending { it.funFactor }
         }
 
