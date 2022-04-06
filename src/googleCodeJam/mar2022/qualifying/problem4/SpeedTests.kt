@@ -25,13 +25,13 @@ fun main() {
     return
 }
 
-fun generateChain(funFactor: Int? = null): ChainReaction {
+fun generateChain(funFactor: Long? = null): ChainReaction {
     var prevModule: Module? = null
     val chainModules = List(10000) {
-        val newModule = Module(funFactor ?: Random().nextInt(500))
+        val newModule = Module(funFactor ?: Random().nextInt(500).toLong())
         if (prevModule != null) newModule.nextModule = prevModule
         prevModule = newModule
         newModule
     }
-    return ChainReaction(1).apply { modules = chainModules }
+    return ChainReaction(1)
 }
