@@ -22,285 +22,288 @@ fun main() {
     val expectedOutput = Scanner(File("$folder${fileNamePrefix}_output.txt"))
 
     val timeChecker = TimeChecker()
-    execute(input, expectedOutput)
+    Problem4.execute(input, expectedOutput)
     timeChecker.logTime(printNow = true)
 
     println("All passed")
 }
 
-fun execute(input: Scanner, expectedOutput: Scanner?) {
-    val testCases = input.nextLine().toInt()
-    for (testCaseIndex in 1..testCases) {
-        val expectedLine = expectedOutput?.nextLine()
-        val totalModules = input.nextLine().toInt()
-        val modules = input.nextLine().split(" ")
-                .takeIf { it.size == totalModules }!!
-                .map { Module(it.toLong()) }
-                .toMutableList()
+object Problem4 {
+    fun execute(input: Scanner, expectedOutput: Scanner?) {
+        val testCases = input.nextLine().toInt()
+        for (testCaseIndex in 1..testCases) {
+            val expectedLine = expectedOutput?.nextLine()
+            val totalModules = input.nextLine().toInt()
+            val modules = input.nextLine().split(" ")
+                    .takeIf { it.size == totalModules }!!
+                    .map { Module(it.toLong()) }
+                    .toMutableList()
 
-        input.nextLine().split(" ")
-                .takeIf { it.size == totalModules }!!
-                .forEachIndexed { moduleIndex, nextModuleIndexString ->
-                    nextModuleIndexString.toInt()
-                            .takeIf { it > 0 }?.minus(1)
-                            ?.let { nextModuleIndex -> modules[moduleIndex].nextModule = modules[nextModuleIndex] }
-                }
-        modules.sortByDescending { it.funFactor }
-
-        var finalFunSum = 0L
-        val remainingChains = modules.mapIndexedNotNull { moduleIndex, module ->
-            if (!module.isStartModule) return@mapIndexedNotNull null
-            val chain = ChainReaction(moduleIndex)
-            val chainModules = mutableListOf<Module>()
-            module.forEachTriggerableInChain {
-                chainModules.add(it)
-                it.untriggeredChains.add(chain)
-            }
-            chain.takeIf { it.setModulesAndFinalise(chainModules)?.let { result -> finalFunSum += result } == null }
-        }.groupBy { it.sortedTriggerableModules.first().funFactor }
-
-        val remainingChainsKeys = remainingChains.keys.toList().sorted().toMutableList()
-        val groupedModules = modules.groupBy { it.funFactor }
-
-        while (remainingChainsKeys.isNotEmpty()) {
-            // Find the max funFactor of the chain whose highest funFactor is minimal
-            val lowestChains = remainingChains.getValue(remainingChainsKeys.first()).filterNot { it.hasBeenTriggered }
-            if (lowestChains.isEmpty()) {
-                remainingChainsKeys.removeAt(0)
-                continue
-            }
-            val nextFunFactorToTrigger = lowestChains.map { it.sortedTriggerableModules.first().funFactor }.getMin()
-
-            // Find the module with the desired fun factor that is closest to the end of a chain
-            // (allows all duplicates to be triggered to, rather than the first chain potentially triggering them all)
-            val nextModuleToTrigger = groupedModules.getValue(nextFunFactorToTrigger)
-                    .filterNot { it.hasBeenTriggered }
-                    .let {
-                        if (it.size == 1) return@let it.first()
-                        var lowest: Pair<Module, Int>? = null
-                        it.forEach { module ->
-                            val modulesInChain = module.untriggeredChains.first().modules
-                            val distanceToEnd = modulesInChain.size - modulesInChain.indexOf(module)
-                            if (lowest == null || lowest!!.second > distanceToEnd) {
-                                lowest = module to distanceToEnd
-                            }
-                        }
-                        lowest!!.first
+            input.nextLine().split(" ")
+                    .takeIf { it.size == totalModules }!!
+                    .forEachIndexed { moduleIndex, nextModuleIndexString ->
+                        nextModuleIndexString.toInt()
+                                .takeIf { it > 0 }?.minus(1)
+                                ?.let { nextModuleIndex -> modules[moduleIndex].nextModule = modules[nextModuleIndex] }
                     }
-            // Find all chains for which the highest fun factor is the module we want to trigger
-            //     and prepare them for analysis
-            var consideredChains = nextModuleToTrigger.untriggeredChains
-                    .map { chain -> ChainToFunList(chain, chain.sortedTriggerableModules.map { it.funFactor }) }
+            modules.sortByDescending { it.funFactor }
 
-            var chainReactionToTrigger: ChainReaction
-            var checkIndex = 0
-            while (true) {
-                if (consideredChains.size == 1) {
-                    chainReactionToTrigger = consideredChains.first().chainReaction
-                    break
+            var finalFunSum = 0L
+            val remainingChains = modules.mapIndexedNotNull { moduleIndex, module ->
+                if (!module.isStartModule) return@mapIndexedNotNull null
+                val chain = ChainReaction(moduleIndex)
+                val chainModules = mutableListOf<Module>()
+                module.forEachTriggerableInChain {
+                    chainModules.add(it)
+                    it.untriggeredChains.add(chain)
                 }
-                // If any chains have no more modules, trigger one of these at random
-                // (all are identical in their descending list of funFactors)
-                val maxLenChain = consideredChains.find { it.funFactors.size == checkIndex + 1 }
-                if (maxLenChain != null) {
-                    chainReactionToTrigger = maxLenChain.chainReaction
-                    break
+                chain.takeIf { it.setModulesAndFinalise(chainModules)?.let { result -> finalFunSum += result } == null }
+            }.groupBy { it.sortedTriggerableModules.first().funFactor }
+
+            val remainingChainsKeys = remainingChains.keys.toList().sorted().toMutableList()
+            val groupedModules = modules.groupBy { it.funFactor }
+
+            while (remainingChainsKeys.isNotEmpty()) {
+                // Find the max funFactor of the chain whose highest funFactor is minimal
+                val lowestChains =
+                        remainingChains.getValue(remainingChainsKeys.first()).filterNot { it.hasBeenTriggered }
+                if (lowestChains.isEmpty()) {
+                    remainingChainsKeys.removeAt(0)
+                    continue
+                }
+                val nextFunFactorToTrigger = lowestChains.map { it.sortedTriggerableModules.first().funFactor }.getMin()
+
+                // Find the module with the desired fun factor that is closest to the end of a chain
+                // (allows all duplicates to be triggered to, rather than the first chain potentially triggering them all)
+                val nextModuleToTrigger = groupedModules.getValue(nextFunFactorToTrigger)
+                        .filterNot { it.hasBeenTriggered }
+                        .let {
+                            if (it.size == 1) return@let it.first()
+                            var lowest: Pair<Module, Int>? = null
+                            it.forEach { module ->
+                                val modulesInChain = module.untriggeredChains.first().modules
+                                val distanceToEnd = modulesInChain.size - modulesInChain.indexOf(module)
+                                if (lowest == null || lowest!!.second > distanceToEnd) {
+                                    lowest = module to distanceToEnd
+                                }
+                            }
+                            lowest!!.first
+                        }
+                // Find all chains for which the highest fun factor is the module we want to trigger
+                //     and prepare them for analysis
+                var consideredChains = nextModuleToTrigger.untriggeredChains
+                        .map { chain -> ChainToFunList(chain, chain.sortedTriggerableModules.map { it.funFactor }) }
+
+                var chainReactionToTrigger: ChainReaction
+                var checkIndex = 0
+                while (true) {
+                    if (consideredChains.size == 1) {
+                        chainReactionToTrigger = consideredChains.first().chainReaction
+                        break
+                    }
+                    // If any chains have no more modules, trigger one of these at random
+                    // (all are identical in their descending list of funFactors)
+                    val maxLenChain = consideredChains.find { it.funFactors.size == checkIndex + 1 }
+                    if (maxLenChain != null) {
+                        chainReactionToTrigger = maxLenChain.chainReaction
+                        break
+                    }
+
+                    checkIndex++
+
+                    // Find the minimum next-highest funFactor
+                    val minFunFactor = consideredChains.map { it.funFactors[checkIndex] }.getMin()
+                    // Find all chains with the minimal next-highest funFactor
+                    consideredChains = consideredChains.filter { it.funFactors[checkIndex] == minFunFactor }
                 }
 
-                checkIndex++
-
-                // Find the minimum next-highest funFactor
-                val minFunFactor = consideredChains.map { it.funFactors[checkIndex] }.getMin()
-                // Find all chains with the minimal next-highest funFactor
-                consideredChains = consideredChains.filter { it.funFactors[checkIndex] == minFunFactor }
+                chainReactionToTrigger.let {
+                    finalFunSum += it.trigger()
+                }
             }
 
-            chainReactionToTrigger.let {
-                finalFunSum += it.trigger()
+            val output = "Case #$testCaseIndex: $finalFunSum"
+            check(expectedLine == null || output == expectedLine) { "Failed: Wrong answer" }
+            println(output)
+        }
+    }
+
+    data class ChainToFunList(
+        val chainReaction: ChainReaction,
+        val funFactors: List<Long>
+    )
+
+    data class Module(
+        val funFactor: Long
+    ) {
+        /**
+         * Next module in the chain reaction
+         */
+        var nextModule: Module? = null
+            set(value) {
+                value!!.isStartModule = false
+                field = value
+            }
+
+        /**
+         * True if this module is not connected to by any other module
+         */
+        var isStartModule: Boolean = true
+            private set
+
+        /**
+         * Has been triggered by the chain reaction
+         */
+        var hasBeenTriggered: Boolean = false
+
+        /**
+         * The untriggered chains this module is a part of
+         */
+        var untriggeredChains: MutableList<ChainReaction> = mutableListOf()
+
+        /**
+         * Defined to make the debug console easier to read
+         */
+        override fun toString(): String {
+            return funFactor.toString()
+        }
+
+        /**
+         * Iterate through all [Module]s in the [ChainReaction] as if this [Module] was being triggered
+         * (stops when it reaches a module with [Module.hasBeenTriggered])
+         */
+        fun forEachTriggerableInChain(block: (Module) -> Unit) {
+            var current: Module? = this
+            do {
+                block(current!!)
+                current = current.nextModule
+            } while (current != null && !current.hasBeenTriggered)
+        }
+    }
+
+    data class ChainReaction(
+        val id: Int
+    ) {
+        /**
+         * [Module]s that make up this chain, in the order they will be triggered
+         */
+        lateinit var modules: List<Module>
+            private set
+
+        /**
+         * @return the result of [ChainReaction.trigger] if the chain was auto-triggered due to having only 1 module
+         */
+        fun setModulesAndFinalise(value: List<Module>): Long? {
+            check(value.isNotEmpty()) { "Empty list" }
+            modules = value
+            if (value.size == 1) {
+                return trigger()
+            }
+            sortedTriggerableModules = value.sortedByDescending { it.funFactor }
+            return null
+        }
+
+        /**
+         * Whether this chain has been triggered
+         */
+        var hasBeenTriggered: Boolean = false
+
+        /**
+         * This chain is about to be triggered.
+         * Used to ensure when [ChainReaction.trigger] recurses, each [ChainReaction] is triggered only once
+         * and that it happens as high up the call stack as possible.
+         */
+        private var markedForTrigger: Boolean = false
+
+        /**
+         * [Module]s that will be triggered, sorted descending by their [Module.funFactor]
+         */
+        lateinit var sortedTriggerableModules: List<Module>
+
+        /**
+         * Defined to make the debug console easier to read
+         */
+        override fun toString(): String {
+            return id.toString() + ": " + modules.joinToString(" ") { it.funFactor.toString() }
+        }
+
+        private fun getModulesThatWillTrigger() = modules.takeWhile { !it.hasBeenTriggered }
+
+        /**
+         * Sets [hasBeenTriggered] to true, [Module.hasBeenTriggered] as appropriate on the modules that will be triggered
+         */
+        fun trigger(): Long {
+            check(!hasBeenTriggered) { "Chain completed twice" }
+
+            val triggeredModules = getModulesThatWillTrigger()
+            var funFactorToUse = triggeredModules.map { it.funFactor }.getMax()
+            check(funFactorToUse != -1L)
+
+            val affectedChains = mutableSetOf<ChainReaction>()
+            val chainsToTrigger = mutableSetOf<ChainReaction>()
+            triggeredModules.forEach {
+                it.hasBeenTriggered = true
+                affectedChains.addAll(it.untriggeredChains)
+            }
+            affectedChains.minus(this).forEach { chain ->
+                chain.sortedTriggerableModules = chain.getModulesThatWillTrigger().sortedByDescending { it.funFactor }
+                if (!chain.markedForTrigger && !chain.hasBeenTriggered && chain.sortedTriggerableModules.size == 1) {
+                    chainsToTrigger.add(chain)
+                    chain.markedForTrigger = true
+                }
+            }
+            chainsToTrigger.forEach { chain ->
+                funFactorToUse += chain.trigger()
+            }
+
+            hasBeenTriggered = true
+            sortedTriggerableModules = mutableListOf()
+
+            return funFactorToUse
+        }
+    }
+
+    /**
+     * Custom min function because apparently Google doesn't understand that Kotlin has a built in function for this
+     */
+    fun List<Long>.getMin(): Long {
+        var min = Long.MAX_VALUE
+        forEach {
+            if (it < min) {
+                min = it
             }
         }
-
-        val output = "Case #$testCaseIndex: $finalFunSum"
-        check(expectedLine == null || output == expectedLine) { "Failed: Wrong answer" }
-        println(output)
-    }
-}
-
-data class ChainToFunList(
-    val chainReaction: ChainReaction,
-    val funFactors: List<Long>
-)
-
-data class Module(
-    val funFactor: Long
-) {
-    /**
-     * Next module in the chain reaction
-     */
-    var nextModule: Module? = null
-        set(value) {
-            value!!.isStartModule = false
-            field = value
-        }
-
-    /**
-     * True if this module is not connected to by any other module
-     */
-    var isStartModule: Boolean = true
-        private set
-
-    /**
-     * Has been triggered by the chain reaction
-     */
-    var hasBeenTriggered: Boolean = false
-
-    /**
-     * The untriggered chains this module is a part of
-     */
-    var untriggeredChains: MutableList<ChainReaction> = mutableListOf()
-
-    /**
-     * Defined to make the debug console easier to read
-     */
-    override fun toString(): String {
-        return funFactor.toString()
+        return min
     }
 
     /**
-     * Iterate through all [Module]s in the [ChainReaction] as if this [Module] was being triggered
-     * (stops when it reaches a module with [Module.hasBeenTriggered])
+     * Custom max function because apparently Google doesn't understand that Kotlin has a built in function for this
      */
-    fun forEachTriggerableInChain(block: (Module) -> Unit) {
-        var current: Module? = this
-        do {
-            block(current!!)
-            current = current.nextModule
-        } while (current != null && !current.hasBeenTriggered)
-    }
-}
-
-data class ChainReaction(
-    val id: Int
-) {
-    /**
-     * [Module]s that make up this chain, in the order they will be triggered
-     */
-    lateinit var modules: List<Module>
-        private set
-
-    /**
-     * @return the result of [ChainReaction.trigger] if the chain was auto-triggered due to having only 1 module
-     */
-    fun setModulesAndFinalise(value: List<Module>): Long? {
-        check(value.isNotEmpty()) { "Empty list" }
-        modules = value
-        if (value.size == 1) {
-            return trigger()
-        }
-        sortedTriggerableModules = value.sortedByDescending { it.funFactor }
-        return null
-    }
-
-    /**
-     * Whether this chain has been triggered
-     */
-    var hasBeenTriggered: Boolean = false
-
-    /**
-     * This chain is about to be triggered.
-     * Used to ensure when [ChainReaction.trigger] recurses, each [ChainReaction] is triggered only once
-     * and that it happens as high up the call stack as possible.
-     */
-    private var markedForTrigger: Boolean = false
-
-    /**
-     * [Module]s that will be triggered, sorted descending by their [Module.funFactor]
-     */
-    lateinit var sortedTriggerableModules: List<Module>
-
-    /**
-     * Defined to make the debug console easier to read
-     */
-    override fun toString(): String {
-        return id.toString() + ": " + modules.joinToString(" ") { it.funFactor.toString() }
-    }
-
-    private fun getModulesThatWillTrigger() = modules.takeWhile { !it.hasBeenTriggered }
-
-    /**
-     * Sets [hasBeenTriggered] to true, [Module.hasBeenTriggered] as appropriate on the modules that will be triggered
-     */
-    fun trigger(): Long {
-        check(!hasBeenTriggered) { "Chain completed twice" }
-
-        val triggeredModules = getModulesThatWillTrigger()
-        var funFactorToUse = triggeredModules.map { it.funFactor }.getMax()
-        check(funFactorToUse != -1L)
-
-        val affectedChains = mutableSetOf<ChainReaction>()
-        val chainsToTrigger = mutableSetOf<ChainReaction>()
-        triggeredModules.forEach {
-            it.hasBeenTriggered = true
-            affectedChains.addAll(it.untriggeredChains)
-        }
-        affectedChains.minus(this).forEach { chain ->
-            chain.sortedTriggerableModules = chain.getModulesThatWillTrigger().sortedByDescending { it.funFactor }
-            if (!chain.markedForTrigger && !chain.hasBeenTriggered && chain.sortedTriggerableModules.size == 1) {
-                chainsToTrigger.add(chain)
-                chain.markedForTrigger = true
+    fun List<Long>.getMax(): Long {
+        var max = Long.MIN_VALUE
+        forEach {
+            if (it > max) {
+                max = it
             }
         }
-        chainsToTrigger.forEach { chain ->
-            funFactorToUse += chain.trigger()
-        }
-
-        hasBeenTriggered = true
-        sortedTriggerableModules = mutableListOf()
-
-        return funFactorToUse
+        return max
     }
-}
 
-/**
- * Custom min function because apparently Google doesn't understand that Kotlin has a built in function for this
- */
-fun List<Long>.getMin(): Long {
-    var min = Long.MAX_VALUE
-    forEach {
-        if (it < min) {
-            min = it
+    /**
+     * Custom minBy function because apparently Google doesn't understand that Kotlin has a built in function for this
+     */
+    fun <T> List<T>.getMinBy(selector: (T) -> Long): T {
+        require(isNotEmpty()) { "List is empty" }
+
+        var minValue = Long.MAX_VALUE
+        var minItem: T? = null
+        forEach {
+            val value = selector(it)
+            if (minItem == null || value < minValue) {
+                minItem = it
+                minValue = value
+            }
         }
+        return minItem!!
     }
-    return min
-}
-
-/**
- * Custom max function because apparently Google doesn't understand that Kotlin has a built in function for this
- */
-fun List<Long>.getMax(): Long {
-    var max = Long.MIN_VALUE
-    forEach {
-        if (it > max) {
-            max = it
-        }
-    }
-    return max
-}
-
-/**
- * Custom minBy function because apparently Google doesn't understand that Kotlin has a built in function for this
- */
-fun <T> List<T>.getMinBy(selector: (T) -> Long): T {
-    require(isNotEmpty()) { "List is empty" }
-
-    var minValue = Long.MAX_VALUE
-    var minItem: T? = null
-    forEach {
-        val value = selector(it)
-        if (minItem == null || value < minValue) {
-            minItem = it
-            minValue = value
-        }
-    }
-    return minItem!!
 }

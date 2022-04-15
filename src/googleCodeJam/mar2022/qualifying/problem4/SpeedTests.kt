@@ -1,6 +1,8 @@
 package googleCodeJam.mar2022.qualifying.problem4
 
 import googleCodeJam.mar2022.qualifying.TimeChecker
+import googleCodeJam.mar2022.qualifying.problem4.Problem4.getMin
+import googleCodeJam.mar2022.qualifying.problem4.Problem4.getMinBy
 import java.util.*
 
 /*
@@ -12,7 +14,7 @@ NOTES:
 
 fun main() {
     val chains = List(10000) {
-        generateChain()
+        Problem4SpeedTests.generateChain()
     }
 
     val timeChecker = TimeChecker()
@@ -25,13 +27,17 @@ fun main() {
     return
 }
 
-fun generateChain(funFactor: Long? = null): ChainReaction {
-    var prevModule: Module? = null
-    val chainModules = List(10000) {
-        val newModule = Module(funFactor ?: Random().nextInt(500).toLong())
-        if (prevModule != null) newModule.nextModule = prevModule
-        prevModule = newModule
-        newModule
+object Problem4SpeedTests {
+    fun generateChain(funFactor: Long? = null): Problem4.ChainReaction {
+        var prevModule: Problem4.Module? = null
+        val chainModules = List(10000) {
+            val newModule = Problem4.Module(funFactor ?: Random().nextInt(500).toLong())
+            if (prevModule != null) newModule.nextModule = prevModule
+            prevModule = newModule
+            newModule
+        }
+        return Problem4.ChainReaction(1).apply {
+            setModulesAndFinalise(chainModules)
+        }
     }
-    return ChainReaction(1)
 }
