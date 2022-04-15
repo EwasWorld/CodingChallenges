@@ -26,25 +26,55 @@ object Problem3 {
                     .split(" ")
                     .let { it[0].toInt() to it[1].toInt() }
             val exercises = List(totalExercises) {
-                input.nextLine().split(" ").map { it.toInt() }
+                Weights(input.nextLine().split(" ").map { it.toInt() })
             }
             check(exercises.all { it.size == totalTypesOfWeights }) { "Invalid weight detected" }
 
             var totalOperations = 0
-            val currentWeightStack = mutableListOf<MutableList<Int>>()
+            var currentWeightStack = mutableListOf<Weights>()
             exercises.forEach { exercise ->
+                /*
+                 * If there are no weights on the bar, add all exercise weights
+                 */
                 if (currentWeightStack.isEmpty()) {
-                    currentWeightStack.add(exercise.toMutableList())
-                    totalOperations += exercise.sum()
+                    currentWeightStack.add(exercise)
+                    totalOperations += exercise.sum
                     return@forEach
                 }
-                val compareWeightsReturn = compareWeights(currentWeightStack.flattenWeights(), exercise)
-                currentWeightStack.add(compareWeightsReturn.weightsToAdd.toMutableList())
-                totalOperations += compareWeightsReturn.weightsToAdd.sum()
+
+                /*
+                 * Work out what weights can be kept on the bar
+                 */
+                var remainingWeightsToBeAdded = exercise
+                for (weightsSection in currentWeightStack.withIndex()) {
+                    val compareWeightsReturn = weightsSection.value.compareWeights(remainingWeightsToBeAdded)
+
+                    /*
+                     * If weights from this section need to be removed, all later sections must be removed in their entirety
+                     * For the moment we are also assuming the current section is completely removed too
+                     */
+                    if (compareWeightsReturn.weightsToRemove.sum > 0) {
+                        totalOperations += currentWeightStack
+                                .subList(weightsSection.index, currentWeightStack.lastIndex)
+                                .sumBy { it.sum }
+                        currentWeightStack = currentWeightStack.take(weightsSection.index + 1).toMutableList()
+                        break
+                    }
+                    remainingWeightsToBeAdded = compareWeightsReturn.weightsToAdd
+                }
+
+                /*
+                 * Add the outstanding weights to the bar
+                 */
+                val weightsToAdd = remainingWeightsToBeAdded.sum
+                if (weightsToAdd > 0) {
+                    currentWeightStack.add(remainingWeightsToBeAdded)
+                    totalOperations += weightsToAdd
+                }
             }
 
             // Remove all weights from the bar to end
-            totalOperations += currentWeightStack.flatten().sum()
+            totalOperations += currentWeightStack.sumBy { it.sum }
 
             val outputString = "Case #$testCaseIndex: $totalOperations"
             expectedOutput?.checkExpectedOutput(outputString, true)
@@ -52,22 +82,31 @@ object Problem3 {
         }
     }
 
-    fun compareWeights(weightsOnBar: List<Int>, weightsForExercise: List<Int>): CompareWeightsReturn {
-        val weightsToAdd = mutableListOf<Int>()
-        val weightsToRemove = mutableListOf<Int>()
-        for (weightType in weightsForExercise.indices) {
-            val onBar = weightsOnBar[weightType]
-            val forExercise = weightsForExercise[weightType]
-            weightsToRemove.add(if (onBar < forExercise) 0 else onBar - forExercise)
-            weightsToAdd.add(if (onBar > forExercise) 0 else forExercise - onBar)
-        }
-        return CompareWeightsReturn(weightsToAdd, weightsToRemove)
-    }
-
     data class CompareWeightsReturn(
-        val weightsToAdd: List<Int>,
-        val weightsToRemove: List<Int>
+        val weightsToAdd: Weights,
+        val weightsToRemove: Weights
     )
 
-    fun List<List<Int>>.flattenWeights() = List(first().size) { index -> sumBy { it[index] } }
+    class Weights(
+        weights: List<Int>
+    ) {
+        val size = weights.size
+        private val weights = weights.toMutableList()
+        val sum = weights.sum()
+
+        /**
+         * @return what weights need to be added/removed from this set to create [desiredWeights]
+         */
+        fun compareWeights(desiredWeights: Weights): CompareWeightsReturn {
+            val weightsToAdd = mutableListOf<Int>()
+            val weightsToRemove = mutableListOf<Int>()
+            for (weightType in desiredWeights.weights.indices) {
+                val onBar = weights[weightType]
+                val forExercise = desiredWeights.weights[weightType]
+                weightsToRemove.add(if (onBar < forExercise) 0 else onBar - forExercise)
+                weightsToAdd.add(if (onBar > forExercise) 0 else forExercise - onBar)
+            }
+            return CompareWeightsReturn(Weights(weightsToAdd), Weights(weightsToRemove))
+        }
+    }
 }
