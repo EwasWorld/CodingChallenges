@@ -30,8 +30,8 @@ object Problem1 {
 
             // Check whether this is a faster way to group the towers?
 //            val towersGrouped = mutableMapOf<Char, MutableList<Int>>()
-//            for ((index, tower) in towers.withIndex()) {
-//                for (letter in tower) {
+//            for ((index, tower) in towersInput.withIndex()) {
+//                for (letter in tower.toCharArray().distinct()) {
 //                    towersGrouped.getOrPut(letter, { mutableListOf() }).add(index)
 //                }
 //            }
@@ -45,52 +45,54 @@ object Problem1 {
             var isPossible = true
             val finalTower = FinalTower()
             for ((letter, towerIndexes) in towersGrouped) {
-                if (towerIndexes.size <= 1) {
-                    val firstTower = validateTower(towersInput[towerIndexes.first()], letter)
-                    isPossible = firstTower.isValid
+                if (towerIndexes.isEmpty()) {
+                    continue
+                }
+                if (towerIndexes.size == 1) {
+                    val towerValidity = towersInput[towerIndexes.first()].validateTower(letter)
+                    isPossible = towerValidity.isValid
                     if (isPossible) {
-                        isPossible = finalTower.addTowers(towerLetter = letter, repeatedLetter = towerIndexes)
+                        isPossible = finalTower.addTower(towerLetter = letter, repeatedLetter = towerIndexes)
                     }
                 }
                 else {
-                    val (repeated, other) = towerIndexes.partition {
+                    // repeatedLetterOnly: tower is just the current letter repeated
+                    // otherLettersToo: tower contains other letters besides the current letter
+                    val (repeatedLetterOnly, otherLettersToo) = towerIndexes.partition {
                         towersInput[it].toCharArray().distinct().size == 1
                     }
-                    when (other.size) {
+                    when (otherLettersToo.size) {
                         0 -> {
-                            isPossible = finalTower.addTowers(towerLetter = letter, repeatedLetter = repeated)
+                            isPossible = finalTower.addTower(towerLetter = letter, repeatedLetter = repeatedLetterOnly)
                         }
                         1 -> {
-                            val firstTower = validateTower(towersInput[other[0]], letter)
-                            isPossible = firstTower.isValid
+                            val towerValidity = towersInput[otherLettersToo[0]].validateTower(letter)
+                            isPossible = towerValidity.isValid
                             if (isPossible) {
-                                isPossible = finalTower.addTowers(
+                                isPossible = finalTower.addTower(
                                         towerLetter = letter,
-                                        validFromEnd = if (firstTower.validFromFront) null else other[0],
-                                        repeatedLetter = repeated,
-                                        validFromFront = if (firstTower.validFromFront) other[0] else null
+                                        validFromEnd = if (towerValidity.validFromFront) null else otherLettersToo[0],
+                                        repeatedLetter = repeatedLetterOnly,
+                                        validFromFront = if (towerValidity.validFromFront) otherLettersToo[0] else null
                                 )
                             }
                         }
                         2 -> {
-                            val firstTower = validateTower(towersInput[other[0]], letter)
-                            val secondTower = validateTower(towersInput[other[1]], letter)
-                            if (!firstTower.isValid || !secondTower.isValid) {
+                            val firstValidity = towersInput[otherLettersToo[0]].validateTower(letter)
+                            val secondValidity = towersInput[otherLettersToo[1]].validateTower(letter)
+                            if (!firstValidity.isValid || !secondValidity.isValid
+                                    || setOf(firstValidity.validType, secondValidity.validType)
+                                    != setOf(ValidType.FROM_FRONT, ValidType.FROM_END)
+                            ) {
                                 isPossible = false
                             }
                             else {
-                                val types = listOf(firstTower.validType, secondTower.validType)
-                                if (!types.contains(ValidType.FROM_FRONT) || !types.contains(ValidType.FROM_END)) {
-                                    isPossible = false
-                                }
-                                else {
-                                    isPossible = finalTower.addTowers(
-                                            towerLetter = letter,
-                                            validFromEnd = if (firstTower.validFromFront) other[1] else other[0],
-                                            repeatedLetter = repeated,
-                                            validFromFront = if (firstTower.validFromFront) other[0] else other[1]
-                                    )
-                                }
+                                isPossible = finalTower.addTower(
+                                        towerLetter = letter,
+                                        validFromEnd = if (firstValidity.validFromFront) otherLettersToo[1] else otherLettersToo[0],
+                                        repeatedLetter = repeatedLetterOnly,
+                                        validFromFront = if (firstValidity.validFromFront) otherLettersToo[0] else otherLettersToo[1]
+                                )
                             }
                         }
                         else -> isPossible = false
@@ -102,23 +104,22 @@ object Problem1 {
             }
 
             val outputString = "Case #$testCaseIndex: " + if (isPossible) finalTower.toString() else "IMPOSSIBLE"
-            checkOutput(outputString, isPossible, expectedOutput, ioHandler?.isSampleTestSet == true)
+            outputString.checkOutput(isPossible, expectedOutput, ioHandler?.isSampleTestSet == true)
             println(outputString)
         }
     }
 
-    private fun checkOutput(
-        output: String,
+    private fun String.checkOutput(
         isPossible: Boolean,
         expectedOutput: String?,
         @Suppress("SameParameterValue") displayError: Boolean = false
     ) {
         try {
-            val outputSplit = output.split(":")
+            val outputSplit = split(":")
             val outputTower = outputSplit[1].trim()
             if (!isPossible) {
                 try {
-                    expectedOutput?.checkExpectedOutput(output, true)
+                    expectedOutput?.checkExpectedOutput(this, true)
                     return
                 }
                 catch (e: Exception) {
@@ -152,35 +153,32 @@ object Problem1 {
         }
     }
 
-    private fun validateTower(tower: String, desiredLetter: Char): ValidateResult {
-        val desiredLetterCount = tower.filter { it == desiredLetter }.length
-        if (desiredLetterCount == tower.length) {
+    private fun String.validateTower(desiredLetter: Char): ValidateResult {
+        val desiredLetterCount = filter { it == desiredLetter }.length
+        if (desiredLetterCount == length) {
             return ValidateResult(true, ValidType.BOTH_ENDS)
         }
 
         val validFromFront: ValidType
         val testValue = when (desiredLetter) {
-            tower.first() -> {
+            first() -> {
                 validFromFront = ValidType.FROM_FRONT
-                tower
+                this
             }
-            tower.last() -> {
+            last() -> {
                 validFromFront = ValidType.FROM_END
-                tower.reversed()
+                reversed()
             }
             else -> {
                 validFromFront = ValidType.MIDDLE_ONLY
-                tower.dropWhile { it != desiredLetter }
+                dropWhile { it != desiredLetter }
             }
         }
         val consecutiveDesiredLetters = testValue.takeWhile { it == desiredLetter }.length
         return ValidateResult(consecutiveDesiredLetters == desiredLetterCount, validFromFront)
     }
 
-    data class ValidateResult(
-        val isValid: Boolean,
-        val validType: ValidType
-    ) {
+    data class ValidateResult(val isValid: Boolean, val validType: ValidType) {
         val validFromFront = validType == ValidType.FROM_FRONT
     }
 
@@ -192,65 +190,49 @@ object Problem1 {
         /**
          * @return true if the tower is valid
          */
-        fun addTowers(
+        fun addTower(
             @Suppress("UNUSED_PARAMETER") towerLetter: Char, // Used for setting conditional breakpoints :P
             validFromEnd: Int? = null,
             repeatedLetter: List<Int> = listOf(),
             validFromFront: Int? = null
         ): Boolean {
-            val towerSequence = repeatedLetter.toMutableList()
-            if (validFromEnd != null) {
-                if (towerSequence.isEmpty()) {
-                    towerSequence.add(validFromEnd)
-                }
-                else {
-                    towerSequence.add(0, validFromEnd)
-                }
-            }
-            if (validFromFront != null) {
-                towerSequence.add(validFromFront)
-            }
+            val towerSequence = listOf(validFromEnd).plus(repeatedLetter).plus(validFromFront).filterNotNull()
             if (towerSequence.isEmpty()) {
                 return true
             }
 
-            val partialTower = PartialTower(towerSequence)
-            val matchingLast = partialTowers.find { it.firstTowerIndex == partialTower.lastTowerIndex }
-            val matchingFirst = partialTowers.find { it.lastTowerIndex == partialTower.firstTowerIndex }
-            return when {
-                matchingFirst == null && matchingLast == null -> {
-                    if (towerSequence.size == 1
-                            && partialTowers.filter { it.contains(towerSequence.first()) }.size == 1
-                    ) {
-                        return true
-                    }
-                    partialTowers.add(partialTower)
-                    true
+            val matchingTowers = partialTowers.filter {
+                // Only checking the first and last because this partialTower's internal letters are unique
+                val containsFirst = it.contains(towerSequence.first())
+                val containsLast = it.contains(towerSequence.last())
+                if (containsFirst && containsLast && towerSequence.first() != towerSequence.last()) {
+                    // Can only 'attach' at one end so if both ends are distinct and contained in the tower,
+                    //      it's impossible
+                    return false
                 }
-                matchingFirst == matchingLast -> towerSequence.size == 1
-                matchingFirst != null && matchingLast != null -> {
-                    partialTowers.remove(matchingFirst)
-                    partialTowers.remove(matchingLast)
-                    partialTowers.add(matchingFirst.combineTowers(partialTower).combineTowers(matchingLast))
-                    true
+                containsFirst || containsLast
+            }.distinct()
+
+            // Join this and matching towers into one
+            var partialTower = PartialTower(towerSequence)
+            for (matchingTower in matchingTowers) {
+                partialTowers.remove(matchingTower)
+                try {
+                    partialTower = partialTower.combineTowers(matchingTower)
                 }
-                else -> {
-                    val matchingTower = matchingFirst ?: matchingLast!!
-                    partialTowers.remove(matchingTower)
-                    partialTowers.add(matchingTower.combineTowers(partialTower))
-                    true
+                catch (e: Exception) {
+                    return false
                 }
             }
+            partialTowers.add(partialTower)
+            return true
         }
 
         override fun toString(): String {
             return partialTowers.joinToString("")
         }
 
-        data class PartialTower(val towerIndexes: List<Int>) {
-            val firstTowerIndex = towerIndexes.first()
-            val lastTowerIndex = towerIndexes.last()
-
+        data class PartialTower(private val towerIndexes: List<Int>) {
             fun combineTowers(other: PartialTower): PartialTower {
                 if (towerIndexes.first() == other.towerIndexes.last()) {
                     return PartialTower(other.towerIndexes.dropLast(1).plus(towerIndexes))
@@ -258,26 +240,24 @@ object Problem1 {
                 if (towerIndexes.last() == other.towerIndexes.first()) {
                     return PartialTower(towerIndexes.dropLast(1).plus(other.towerIndexes))
                 }
-                if (towerIndexes.isEmpty()) {
+                if (towerIndexes.isEmpty()
+                        || towerIndexes.size == 1 && other.towerIndexes.contains(towerIndexes.first())
+                ) {
                     return other
                 }
-                if (other.towerIndexes.isEmpty()) {
+                if (other.towerIndexes.isEmpty()
+                        || other.towerIndexes.size == 1 && towerIndexes.contains(other.towerIndexes.first())
+                ) {
                     return this
-                }
-                if (other.towerIndexes.size == 1 && towerIndexes.contains(other.towerIndexes.first())) {
-                    return this
-                }
-                if (towerIndexes.size == 1 && other.towerIndexes.contains(towerIndexes.first())) {
-                    return other
                 }
                 throw IllegalStateException("Cannot combine towers")
             }
 
+            fun contains(index: Int) = towerIndexes.contains(index)
+
             override fun toString(): String {
                 return towerIndexes.joinToString("") { towersInput[it] }
             }
-
-            fun contains(index: Int) = towerIndexes.contains(index)
         }
     }
 }
