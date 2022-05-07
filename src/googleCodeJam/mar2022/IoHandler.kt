@@ -7,7 +7,7 @@ class IoHandler private constructor(
     useConsole: Boolean,
     testSetPrefix: String? = null,
     testSet: Int? = null,
-    isSampleTestSet: Boolean? = null
+    val isSampleTestSet: Boolean? = null
 ) {
     constructor(
         testSetPrefix: String,
