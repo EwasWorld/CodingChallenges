@@ -48,55 +48,39 @@ object Problem1 {
                 if (towerIndexes.isEmpty()) {
                     continue
                 }
-                if (towerIndexes.size == 1) {
-                    val towerValidity = towersInput[towerIndexes.first()].validateTower(letter)
-                    isPossible = towerValidity.isValid
-                    if (isPossible) {
-                        isPossible = finalTower.addTower(towerLetter = letter, repeatedLetter = towerIndexes)
-                    }
+                // repeatedLetterOnly: tower is just the current letter repeated
+                // otherLettersToo: tower contains other letters besides the current letter
+                val (repeatedLetterOnly, otherLettersToo) = towerIndexes.partition {
+                    towersInput[it].toCharArray().distinct().size == 1
                 }
-                else {
-                    // repeatedLetterOnly: tower is just the current letter repeated
-                    // otherLettersToo: tower contains other letters besides the current letter
-                    val (repeatedLetterOnly, otherLettersToo) = towerIndexes.partition {
-                        towersInput[it].toCharArray().distinct().size == 1
+                isPossible = when (otherLettersToo.size) {
+                    0 -> finalTower.addTower(towerLetter = letter, repeatedLetter = repeatedLetterOnly)
+                    1, 2 -> {
+                        val towerOneIndex = otherLettersToo[0]
+                        val towerTwoIndex = if (otherLettersToo.size > 1) otherLettersToo[1] else null
+
+                        val firstValidity = towerOneIndex.validateTower(letter)
+                        val secondValidity = towerTwoIndex?.let { towerTwoIndex.validateTower(letter) }
+
+                        if (!firstValidity.isValid
+                                || (secondValidity != null
+                                        && (!secondValidity.isValid ||
+                                        setOf(firstValidity.validType, secondValidity.validType)
+                                        != setOf(ValidType.FROM_FRONT, ValidType.FROM_END)
+                                        ))
+                        ) {
+                            false
+                        }
+                        else {
+                            finalTower.addTower(
+                                    towerLetter = letter,
+                                    validFromEnd = if (firstValidity.validFromFront) towerTwoIndex else towerOneIndex,
+                                    repeatedLetter = repeatedLetterOnly,
+                                    validFromFront = if (firstValidity.validFromFront) towerOneIndex else towerTwoIndex
+                            )
+                        }
                     }
-                    when (otherLettersToo.size) {
-                        0 -> {
-                            isPossible = finalTower.addTower(towerLetter = letter, repeatedLetter = repeatedLetterOnly)
-                        }
-                        1 -> {
-                            val towerValidity = towersInput[otherLettersToo[0]].validateTower(letter)
-                            isPossible = towerValidity.isValid
-                            if (isPossible) {
-                                isPossible = finalTower.addTower(
-                                        towerLetter = letter,
-                                        validFromEnd = if (towerValidity.validFromFront) null else otherLettersToo[0],
-                                        repeatedLetter = repeatedLetterOnly,
-                                        validFromFront = if (towerValidity.validFromFront) otherLettersToo[0] else null
-                                )
-                            }
-                        }
-                        2 -> {
-                            val firstValidity = towersInput[otherLettersToo[0]].validateTower(letter)
-                            val secondValidity = towersInput[otherLettersToo[1]].validateTower(letter)
-                            if (!firstValidity.isValid || !secondValidity.isValid
-                                    || setOf(firstValidity.validType, secondValidity.validType)
-                                    != setOf(ValidType.FROM_FRONT, ValidType.FROM_END)
-                            ) {
-                                isPossible = false
-                            }
-                            else {
-                                isPossible = finalTower.addTower(
-                                        towerLetter = letter,
-                                        validFromEnd = if (firstValidity.validFromFront) otherLettersToo[1] else otherLettersToo[0],
-                                        repeatedLetter = repeatedLetterOnly,
-                                        validFromFront = if (firstValidity.validFromFront) otherLettersToo[0] else otherLettersToo[1]
-                                )
-                            }
-                        }
-                        else -> isPossible = false
-                    }
+                    else -> false
                 }
                 if (!isPossible) {
                     break
@@ -153,25 +137,26 @@ object Problem1 {
         }
     }
 
-    private fun String.validateTower(desiredLetter: Char): ValidateResult {
-        val desiredLetterCount = filter { it == desiredLetter }.length
-        if (desiredLetterCount == length) {
+    private fun Int.validateTower(desiredLetter: Char): ValidateResult {
+        val tower = towersInput[this]
+        val desiredLetterCount = tower.filter { it == desiredLetter }.length
+        if (desiredLetterCount == tower.length) {
             return ValidateResult(true, ValidType.BOTH_ENDS)
         }
 
         val validFromFront: ValidType
         val testValue = when (desiredLetter) {
-            first() -> {
+            tower.first() -> {
                 validFromFront = ValidType.FROM_FRONT
-                this
+                tower
             }
-            last() -> {
+            tower.last() -> {
                 validFromFront = ValidType.FROM_END
-                reversed()
+                tower.reversed()
             }
             else -> {
                 validFromFront = ValidType.MIDDLE_ONLY
-                dropWhile { it != desiredLetter }
+                tower.dropWhile { it != desiredLetter }
             }
         }
         val consecutiveDesiredLetters = testValue.takeWhile { it == desiredLetter }.length
