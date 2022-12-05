@@ -7,7 +7,7 @@ import java.util.*
 fun main() {
     val ioHandler = IoHandler(
             "src/googleCodeJam/mar2022/round1a/problem3/test_data",
-            0,
+            1,
             true
     )
     Problem3.execute(ioHandler)
@@ -48,19 +48,34 @@ object Problem3 {
                 var remainingWeightsToBeAdded = exercise
                 for (weightsSection in currentWeightStack.withIndex()) {
                     val compareWeightsReturn = weightsSection.value.compareWeights(remainingWeightsToBeAdded)
+                    remainingWeightsToBeAdded = compareWeightsReturn.weightsToAdd
 
-                    /*
-                     * If weights from this section need to be removed, all later sections must be removed in their entirety
-                     * For the moment we are also assuming the current section is completely removed too
-                     */
-                    if (compareWeightsReturn.weightsToRemove.sum > 0) {
-                        totalOperations += currentWeightStack
-                                .subList(weightsSection.index, currentWeightStack.lastIndex)
-                                .sumBy { it.sum }
-                        currentWeightStack = currentWeightStack.take(weightsSection.index + 1).toMutableList()
+                    if (compareWeightsReturn.weightsToRemove.isNotEmpty()) {
+                        /*
+                         * If weights from this section need to be removed,
+                         *      all later sections must be removed in their entirety
+                         */
+                        if (weightsSection.index != currentWeightStack.lastIndex) {
+                            totalOperations += currentWeightStack
+                                    .subList(weightsSection.index + 1, currentWeightStack.lastIndex)
+                                    .sumBy { it.sum }
+                            currentWeightStack = currentWeightStack.take(weightsSection.index + 1).toMutableList()
+                        }
+
+                        if (compareWeightsReturn.weightsToRemove.sum == weightsSection.value.sum) {
+                            /*
+                             * compareWeightsReturn == weightsSection, therefore remove entire section
+                             */
+                            totalOperations += weightsSection.value.sum
+                            currentWeightStack.removeLast()
+                            break
+                        }
+
+                        currentWeightStack.removeLast()
+                        currentWeightStack.add(compareWeightsReturn.weightsRemaining)
+                        totalOperations += compareWeightsReturn.weightsToRemove.sum
                         break
                     }
-                    remainingWeightsToBeAdded = compareWeightsReturn.weightsToAdd
                 }
 
                 /*
@@ -84,15 +99,15 @@ object Problem3 {
 
     data class CompareWeightsReturn(
         val weightsToAdd: Weights,
-        val weightsToRemove: Weights
+        val weightsToRemove: Weights,
+        val weightsRemaining: Weights
     )
 
-    class Weights(
-        weights: List<Int>
-    ) {
-        val size = weights.size
+    class Weights(weights: List<Int>) {
         private val weights = weights.toMutableList()
-        val sum = weights.sum()
+        val sum by lazy { weights.sum() }
+        val size by lazy { weights.size }
+        fun isNotEmpty() = sum > 0
 
         /**
          * @return what weights need to be added/removed from this set to create [desiredWeights]
@@ -100,13 +115,16 @@ object Problem3 {
         fun compareWeights(desiredWeights: Weights): CompareWeightsReturn {
             val weightsToAdd = mutableListOf<Int>()
             val weightsToRemove = mutableListOf<Int>()
+            val weightsRemaining = mutableListOf<Int>()
             for (weightType in desiredWeights.weights.indices) {
                 val onBar = weights[weightType]
                 val forExercise = desiredWeights.weights[weightType]
-                weightsToRemove.add(if (onBar < forExercise) 0 else onBar - forExercise)
+                val totalToRemove = if (onBar < forExercise) 0 else onBar - forExercise
+                weightsToRemove.add(totalToRemove)
                 weightsToAdd.add(if (onBar > forExercise) 0 else forExercise - onBar)
+                weightsRemaining.add(onBar - totalToRemove)
             }
-            return CompareWeightsReturn(Weights(weightsToAdd), Weights(weightsToRemove))
+            return CompareWeightsReturn(Weights(weightsToAdd), Weights(weightsToRemove), Weights(weightsRemaining))
         }
     }
 }

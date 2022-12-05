@@ -6,7 +6,7 @@ import java.util.*
 
 fun main() {
     val ioHandler = IoHandler(
-            "src/googleCodeJam/mar2022/round1b/problem2/test_data",
+            "src/googleCodeJam/mar2022/round/problem/test_data",
             1,
             true
     )
@@ -14,8 +14,6 @@ fun main() {
 }
 
 object Problem {
-    var productsPerCustomer = 0
-
     fun execute(ioHandler: IoHandler? = null) {
         val input = ioHandler?.input ?: Scanner(System.`in`)
         val output = ioHandler?.expectedOutput

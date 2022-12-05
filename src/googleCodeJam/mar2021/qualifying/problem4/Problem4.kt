@@ -4,10 +4,76 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.*
 
+class SeparatedList(val currentList: List<Int>, val nextElement: Int?, val previousElement: Int?) {
+    var start: List<Int> = listOf()
+    val firstCompare: Int
+    var middle: List<Int> = listOf()
+    val secondCompare: Int
+    var end: List<Int> = listOf()
+    var startIndexEdit = 0
+
+    init {
+        // -2 because 2 will be compared with the new unknown
+        var totalFree = currentList.size - 2
+
+        // -1 indicates only one item in the list, need at least 2 to compare against the new element so pull in
+        // a neighbouring item. currentList cannot be empty so -2 is not possible
+        if (totalFree == -1) {
+            when {
+                nextElement != null -> {
+                    firstCompare = currentList[0]
+                    secondCompare = nextElement
+                }
+                previousElement != null -> {
+                    firstCompare = previousElement
+                    secondCompare = currentList[0]
+                    startIndexEdit--
+                }
+                else -> {
+                    throw IllegalStateException("No next or prev element given")
+                }
+            }
+        }
+        else {
+            var currentIndex = 0
+            var nextSublistSize = getNextSublistSize(totalFree)
+            start = currentList.subList(currentIndex, currentIndex + nextSublistSize)
+            firstCompare = currentList[currentIndex + nextSublistSize]
+            currentIndex += nextSublistSize + 1
+            totalFree -= nextSublistSize
+
+            nextSublistSize = getNextSublistSize(totalFree)
+            middle = currentList.subList(currentIndex, currentIndex + nextSublistSize)
+            secondCompare = currentList[currentIndex + nextSublistSize]
+            currentIndex += nextSublistSize + 1
+            totalFree -= nextSublistSize
+
+            end = currentList.subList(currentIndex, currentList.size)
+        }
+    }
+
+    fun compare(judgeInteraction: JudgeInteraction, newItem: Int) {
+//        when (judgeInteraction.comparison(firstCompare, secondCompare, newItem)) {
+//            firstCompare -> {
+//                currentList = separatedLists[0]
+//            }
+//            i -> {
+//                listStartIndex += separatedLists[0].size + 1
+//                currentList = separatedLists[1]
+//            }
+//            comparisonItems[1] -> {
+//                listStartIndex += separatedLists[0].size + 1 + separatedLists[1].size + 1
+//                currentList = separatedLists[2]
+//            }
+//            else -> throw IllegalStateException("Comparison failed")
+//        }
+    }
+}
+
 // Time to complete: ~30 mins for the algorithm, ~2 hrs to write the code and pass
 fun main() {
-//    val judge = CustomInteraction(10, 50, 300)
-    val judge = JudgeInteraction()
+    val judge = CustomInteraction(10, 50, 300)
+//    val judge = JudgeInteraction()
     judge.getInitialNumbers()
     while (judge.currentTestCaseNumber < judge.testCases) {
         // Generate a starting point
@@ -22,46 +88,29 @@ fun main() {
             var listStartIndex = 0
             var currentList: List<Int> = mainList
             while (true) {
-                var separatedLists = mutableListOf<List<Int>>()
-                var comparisonItems = mutableListOf<Int>()
-                // 2 will be compared with the new unknown
-                var totalFree = currentList.size - 2
-                if (totalFree == -1) {
-                    separatedLists = mutableListOf(listOf(), listOf(), listOf())
-                    if (listStartIndex + 1 >= mainList.size) {
-                        listStartIndex -= 1
-                    }
-                    comparisonItems = mainList.subList(listStartIndex, listStartIndex + 2)
-                }
-                else {
-                    var currentIndex = 0
-                    for (j in 0..1) {
-                        val desiredSublist = desiredSublistSize(totalFree)
-                        separatedLists.add(currentList.subList(currentIndex, currentIndex + desiredSublist))
-                        currentIndex += desiredSublist
-                        totalFree -= desiredSublist
-                        comparisonItems.add(currentList[currentIndex])
-                        currentIndex++
-                    }
-                    separatedLists.add(currentList.subList(currentIndex, currentList.size))
-                }
-                when (judge.comparison(comparisonItems[0], comparisonItems[1], i)) {
-                    comparisonItems[0] -> {
-                        currentList = separatedLists[0]
-                    }
-                    i -> {
-                        listStartIndex += separatedLists[0].size + 1
-                        currentList = separatedLists[1]
-                    }
-                    comparisonItems[1] -> {
-                        listStartIndex += separatedLists[0].size + 1 + separatedLists[1].size + 1
-                        currentList = separatedLists[2]
-                    }
-                    else -> throw IllegalStateException("Comparison failed")
-                }
                 if (currentList.isEmpty()) {
                     break
                 }
+                val nextIndex = listStartIndex + currentList.size
+                val separatedList = SeparatedList(
+                        currentList,
+                        if (nextIndex <= mainList.size) mainList[nextIndex] else null,
+                        if (listStartIndex > 0) mainList[listStartIndex - 1] else null
+                )
+//                when (judge.comparison(comparisonItems[0], comparisonItems[1], i)) {
+//                    comparisonItems[0] -> {
+//                        currentList = separatedLists[0]
+//                    }
+//                    i -> {
+//                        listStartIndex += separatedLists[0].size + 1
+//                        currentList = separatedLists[1]
+//                    }
+//                    comparisonItems[1] -> {
+//                        listStartIndex += separatedLists[0].size + 1 + separatedLists[1].size + 1
+//                        currentList = separatedLists[2]
+//                    }
+//                    else -> throw IllegalStateException("Comparison failed")
+//                }
             }
             mainList.add(listStartIndex, i)
         }
@@ -71,7 +120,7 @@ fun main() {
     }
 }
 
-fun desiredSublistSize(items: Int): Int {
+fun getNextSublistSize(items: Int): Int {
     var sublistSize = 2
     var nextSublistSize: Int
     while (true) {
@@ -118,6 +167,10 @@ open class JudgeInteraction {
             throw IllegalStateException("Too many guesses")
         }
         return answer
+    }
+
+    fun comparison(items: List<Int>): Int {
+        return comparison(items[0], items[1], items[2])
     }
 
     /**
