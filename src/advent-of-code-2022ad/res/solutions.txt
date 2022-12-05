@@ -1,0 +1,6 @@
+puzzle number : part 1 test : part 1 actual : part 2 test : part 2 actual
+1:24000:67027:45000:197291
+2:15:15691:12:12989
+3:157:8252:70:2828
+4:2:466:4:865
+5:CMZ:ZSQVCCJLL:MCD:QZFJRWHGS
