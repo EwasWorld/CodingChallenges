@@ -14,6 +14,8 @@ import PuzzleSolvers.Puzzle5
 import PuzzleSolvers.Puzzle5Final
 import PuzzleSolvers.Puzzle6
 import PuzzleSolvers.Puzzle7
+import PuzzleSolvers.Puzzle8
+import PuzzleSolvers.Puzzle9
 -- import PuzzleSolvers.Puzzle<NUMBER>
 
 -- command line options (see main) are parsed into this form
@@ -33,6 +35,8 @@ puzzleSolvers =
       , (5, solvePuzzle5)
       , (6, solvePuzzle6)
       , (7, solvePuzzle7)
+      , (8, solvePuzzle8)
+      , (9, solvePuzzle9)
       -- , (<NUMBER>, solvePuzzle<NUMBER>)
       ]
 
