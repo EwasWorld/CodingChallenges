@@ -5,3 +5,5 @@ puzzle number : part 1 test : part 1 actual : part 2 test : part 2 actual
 4:2:466:4:865
 5:CMZ:ZSQVCCJLL:MCD:QZFJRWHGS
 6:7,5,6,10,11:1850:19,23,23,29,26:2823
+7:95437:1118405:24933642:12545514
+-:?:?:?:?

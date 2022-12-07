@@ -2,6 +2,7 @@ module PuzzleSolvers.Puzzle5
       ( solvePuzzle5
       ) where
 
+import Utils (replaceAt)
 import Data.List (transpose)
 import Data.List.Split (splitOn, chunksOf)
 
@@ -86,11 +87,3 @@ resolveMoveInstrs f ((Instr number from to):xs) stacks = resolveMoveInstrs f xs 
          newToStack = (f (fst splitFromStack)) ++ (stacks !! to)
          newStacks = replaceAt to newToStack $ replaceAt from newFromStack stacks
 
-
-
-replaceAt :: Int -> a -> [a] -> [a]
-replaceAt _ _ [] = []
-replaceAt idx new xs
-    | idx < 0 || idx > (length xs) = xs
-    | otherwise = let (left, right) = splitAt idx xs
-                  in left ++ [new] ++ (tail right)
